@@ -222,7 +222,7 @@ export function defaultFilters(): DiscoverFilters {
     voteCountMin: 200,
     runtimeMin: null,
     runtimeMax: null,
-    language: '',
+    language: 'en',
     cast: [],
     directors: [],
     keywords: [],
@@ -250,6 +250,15 @@ export function posterUrl(path: string | null | undefined, size = 'w342'): strin
 export function imdbUrl(imdbId?: string): string | null {
   if (!imdbId) return null
   return `https://www.imdb.com/title/${imdbId}/`
+}
+
+export function formatRuntime(minutes?: number): string | null {
+  if (!minutes || minutes <= 0) return null
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours && mins) return `${hours}h ${mins}m`
+  if (hours) return `${hours}h`
+  return `${mins}m`
 }
 
 export function yearOf(date?: string): number | undefined {

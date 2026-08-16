@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import type { MovieSummary, RankedMovie } from '../../../shared/types'
-import { posterUrl } from '../../../shared/types'
+import { formatRuntime, posterUrl } from '../../../shared/types'
 
 export default function MovieCard({
   movie,
@@ -15,13 +15,13 @@ export default function MovieCard({
     <button className="card" onClick={() => onOpen(movie)}>
       <div className="poster">
         {poster ? <img src={poster} alt="" /> : <div className="empty">{movie.title}</div>}
-        {match != null ? <span className="badge">{Math.round(match)}% match</span> : null}
+        {match != null ? <span className="badge">{Math.round(match)}%</span> : null}
         <span className="badge right">{movie.voteAverage.toFixed(1)}</span>
       </div>
       <div className="card-body">
-        <h3>{movie.title}</h3>
+        <h3 title={movie.title}>{movie.title}</h3>
         <div className="meta">
-          <span>{movie.year ?? '—'}</span>
+          <span>{[movie.year ?? '—', formatRuntime(movie.runtime)].filter(Boolean).join(' · ')}</span>
           <span>{formatVotes(movie.voteCount)}</span>
         </div>
       </div>

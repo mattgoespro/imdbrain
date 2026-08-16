@@ -135,6 +135,15 @@ async function discover(filters: DiscoverFilters): Promise<PagedMovies> {
   }
   results = results.filter((m) => library.get(m.tmdbId)?.status !== 'skipped')
 
+  for (const entry of library.values()) {
+    tmdb.rememberRuntime(entry.tmdbId, entry.runtime)
+  }
+  await tmdb.prefetchRuntimes(results.map((movie) => movie.tmdbId))
+  results = results.map((movie) => ({
+    ...movie,
+    runtime: movie.runtime ?? tmdb.runtimeOf(movie.tmdbId)
+  }))
+
   let ranked: RankedMovie[] = results.map((movie) => scoreMovie(movie, profile, mode, library))
   if (filters.sortBy === 'match') {
     ranked.sort((a, b) => b.match - a.match)
@@ -149,7 +158,7 @@ async function discover(filters: DiscoverFilters): Promise<PagedMovies> {
 }
 
 function matchesLocalFilters(movie: MovieSummary, filters: DiscoverFilters): boolean {
-  if (filters.genres.length && !filters.genres.every((id) => movie.genreIds.includes(id))) return false
+  if (filters.genres.length && !filters.genres.some((id) => movie.genreIds.includes(id))) return false
   if (filters.withoutGenres.some((id) => movie.genreIds.includes(id))) return false
   if (filters.yearMin && (movie.year ?? 0) < filters.yearMin) return false
   if (filters.yearMax && (movie.year ?? 9999) > filters.yearMax) return false

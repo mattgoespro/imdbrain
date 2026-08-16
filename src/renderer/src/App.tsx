@@ -139,7 +139,7 @@ export default function App(): JSX.Element {
             </div>
           </div>
         </aside>
-        <main className="main">
+        <main className={view === 'discover' ? 'main main-fill' : 'main'}>
           {error ? <div className="error">{error}</div> : null}
           {booting ? (
             <div className="empty">Loading your ranking studio…</div>

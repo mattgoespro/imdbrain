@@ -1,42 +1,42 @@
-import { useEffect, useState, type JSX } from 'react'
-import type { DiscoverFilters, Genre, WatchProvider } from '../../../shared/types'
-import { LANGUAGES, SORT_OPTIONS, defaultFilters } from '../../../shared/types'
-import SuggestField, { keywordSearch, personSearch } from './SuggestField'
+import type { JSX } from 'react'
+import type { DiscoverFilters, Genre } from '../../../shared/types'
+import { LANGUAGES, SORT_OPTIONS, defaultFilters, formatRuntime } from '../../../shared/types'
+import DualRange from './DualRange'
+
+const RUNTIME_FLOOR = 0
+const RUNTIME_CEILING = 240
+const RUNTIME_STEP = 5
 
 export default function FilterPanel({
   filters,
   setFilters,
-  genres,
-  onSearch
+  genres
 }: {
   filters: DiscoverFilters
   setFilters: (filters: DiscoverFilters) => void
   genres: Genre[]
-  onSearch: () => void
 }): JSX.Element {
-  const [providers, setProviders] = useState<WatchProvider[]>([])
-
-  useEffect(() => {
-    window.api.providers().then(setProviders).catch(() => setProviders([]))
-  }, [])
-
   function patch(partial: Partial<DiscoverFilters>): void {
     setFilters({ ...filters, ...partial, page: 1 })
   }
 
-  function toggle(list: number[], id: number): number[] {
-    return list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
+  function toggleGenre(id: number): void {
+    patch({
+      genres: filters.genres.includes(id)
+        ? filters.genres.filter((genreId) => genreId !== id)
+        : [...filters.genres, id],
+      withoutGenres: []
+    })
   }
 
   return (
-    <form
-      className="panel filters"
-      onSubmit={(e) => {
-        e.preventDefault()
-        onSearch()
-      }}
-    >
-      <h3>Advanced filters</h3>
+    <aside className="panel filters">
+      <div className="filters-head">
+        <h3>Advanced filters</h3>
+        <button className="btn ghost" type="button" onClick={() => setFilters(defaultFilters())}>
+          Reset
+        </button>
+      </div>
       <label className="field">
         Title or IMDb ID
         <input
@@ -56,30 +56,20 @@ export default function FilterPanel({
           ))}
         </select>
       </label>
-      <div className="field">
-        Include genres
+      <div className="field field-genres">
+        Genres
+        <p className="field-hint">
+          {filters.genres.length
+            ? 'Match any selected genre.'
+            : 'None selected — all genres included.'}
+        </p>
         <div className="pills">
           {genres.map((genre) => (
             <button
               type="button"
               key={genre.id}
               className={`pill ${filters.genres.includes(genre.id) ? 'on' : ''}`}
-              onClick={() => patch({ genres: toggle(filters.genres, genre.id) })}
-            >
-              {genre.name}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="field">
-        Exclude genres
-        <div className="pills">
-          {genres.slice(0, 12).map((genre) => (
-            <button
-              type="button"
-              key={genre.id}
-              className={`pill dim ${filters.withoutGenres.includes(genre.id) ? 'on' : ''}`}
-              onClick={() => patch({ withoutGenres: toggle(filters.withoutGenres, genre.id) })}
+              onClick={() => toggleGenre(genre.id)}
             >
               {genre.name}
             </button>
@@ -130,100 +120,66 @@ export default function FilterPanel({
           />
         </div>
       </label>
-      <div className="row-2">
-        <label className="field">
-          Min runtime
-          <input
-            type="number"
-            placeholder="mins"
-            value={filters.runtimeMin ?? ''}
-            onChange={(e) => patch({ runtimeMin: num(e.target.value) })}
-          />
-        </label>
-        <label className="field">
-          Max runtime
-          <input
-            type="number"
-            placeholder="mins"
-            value={filters.runtimeMax ?? ''}
-            onChange={(e) => patch({ runtimeMax: num(e.target.value) })}
-          />
-        </label>
-      </div>
+      <label className="field">
+        Runtime {runtimeCaption(filters.runtimeMin, filters.runtimeMax)}
+        <DualRange
+          min={RUNTIME_FLOOR}
+          max={RUNTIME_CEILING}
+          step={RUNTIME_STEP}
+          valueMin={filters.runtimeMin ?? RUNTIME_FLOOR}
+          valueMax={filters.runtimeMax ?? RUNTIME_CEILING}
+          onChange={(nextMin, nextMax) =>
+            patch({
+              runtimeMin: nextMin <= RUNTIME_FLOOR ? null : nextMin,
+              runtimeMax: nextMax >= RUNTIME_CEILING ? null : nextMax
+            })
+          }
+        />
+      </label>
       <label className="field">
         Original language
         <select value={filters.language} onChange={(e) => patch({ language: e.target.value })}>
           {LANGUAGES.map((lang) => (
-            <option key={lang.code} value={lang.code}>
+            <option key={lang.code || 'any'} value={lang.code}>
               {lang.label}
             </option>
           ))}
         </select>
       </label>
-      <SuggestField
-        label="Cast"
-        placeholder="Actor or actress"
-        values={filters.cast}
-        onChange={(cast) => patch({ cast })}
-        search={personSearch}
-      />
-      <SuggestField
-        label="Director"
-        placeholder="Director name"
-        values={filters.directors}
-        onChange={(directors) => patch({ directors })}
-        search={personSearch}
-      />
-      <SuggestField
-        label="Keywords"
-        placeholder="heist, neo-noir…"
-        values={filters.keywords}
-        onChange={(keywords) => patch({ keywords })}
-        search={keywordSearch}
-      />
-      {providers.length ? (
-        <div className="field">
-          Streaming (US)
-          <div className="pills">
-            {providers.slice(0, 16).map((provider) => (
-              <button
-                type="button"
-                key={provider.provider_id}
-                className={`pill ${filters.providers.includes(provider.provider_id) ? 'on' : ''}`}
-                onClick={() => patch({ providers: toggle(filters.providers, provider.provider_id) })}
-              >
-                {provider.provider_name}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={filters.hideWatched}
-          onChange={(e) => patch({ hideWatched: e.target.checked })}
-        />
-        Hide watched
-      </label>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={filters.hideWatchlist}
-          onChange={(e) => patch({ hideWatchlist: e.target.checked })}
-        />
-        Hide watchlist
-      </label>
-      <div className="toolbar">
-        <button className="btn gold" type="submit">
-          Run search
-        </button>
-        <button className="btn ghost" type="button" onClick={() => setFilters(defaultFilters())}>
-          Reset
-        </button>
+      <div className="filter-checks">
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={filters.hideWatched}
+            onChange={(e) => patch({ hideWatched: e.target.checked })}
+          />
+          Hide watched
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={filters.hideWatchlist}
+            onChange={(e) => patch({ hideWatchlist: e.target.checked })}
+          />
+          Hide watchlist
+        </label>
       </div>
-    </form>
+    </aside>
   )
+}
+
+function runtimeCaption(min: number | null, max: number | null): string {
+  const low = min ?? RUNTIME_FLOOR
+  const high = max ?? RUNTIME_CEILING
+  if (low <= RUNTIME_FLOOR && high >= RUNTIME_CEILING) return '· any length'
+  if (low <= RUNTIME_FLOOR) return `· up to ${labelMinutes(high)}`
+  if (high >= RUNTIME_CEILING) return `· ${labelMinutes(low)}+`
+  return `· ${labelMinutes(low)} – ${labelMinutes(high)}`
+}
+
+function labelMinutes(minutes: number): string {
+  if (minutes <= 0) return '0m'
+  return formatRuntime(minutes) ?? `${minutes}m`
 }
 
 function num(value: string): number | null {

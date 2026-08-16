@@ -11,6 +11,7 @@ import type {
 import { yearOf } from '../shared/types'
 
 const BASE = 'https://api.themoviedb.org/3'
+const runtimeCache = new Map<number, number | null>()
 
 export class TmdbError extends Error {
   status: number
@@ -40,9 +41,12 @@ export class TmdbClient {
       url.searchParams.set(key, String(value))
     }
 
+    // TMDB uses "|" for OR. URLSearchParams encodes it as %7C, which the API treats as AND.
+    const href = url.toString().replaceAll('%7C', '|')
+
     let lastError: Error | null = null
     for (let attempt = 0; attempt < 3; attempt++) {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      const res = await fetch(href, { headers: { Accept: 'application/json' } })
       if (res.status === 429) {
         await sleep(400 * (attempt + 1))
         continue
@@ -97,6 +101,27 @@ export class TmdbClient {
   }
 
   async discover(filters: DiscoverFilters, page: number): Promise<TmdbPage> {
+    if (filters.genres.length > 1) {
+      const pages = await Promise.all(
+        filters.genres.map((id) => this.discover({ ...filters, genres: [id] }, page))
+      )
+      const seen = new Set<number>()
+      const results: MovieSummary[] = []
+      for (const p of pages) {
+        for (const movie of p.results) {
+          if (seen.has(movie.tmdbId)) continue
+          seen.add(movie.tmdbId)
+          results.push(movie)
+        }
+      }
+      return {
+        page,
+        totalPages: Math.max(1, ...pages.map((p) => p.totalPages)),
+        totalResults: pages.reduce((sum, p) => sum + p.totalResults, 0),
+        results
+      }
+    }
+
     const params: Record<string, string | number | boolean | undefined> = {
       page,
       include_adult: false,
@@ -112,7 +137,7 @@ export class TmdbClient {
     if (filters.runtimeMin) params['with_runtime.gte'] = filters.runtimeMin
     if (filters.runtimeMax) params['with_runtime.lte'] = filters.runtimeMax
     if (filters.language) params.with_original_language = filters.language
-    if (filters.genres.length) params.with_genres = filters.genres.join(',')
+    if (filters.genres.length === 1) params.with_genres = String(filters.genres[0])
     if (filters.withoutGenres.length) params.without_genres = filters.withoutGenres.join(',')
     if (filters.cast.length) params.with_cast = filters.cast.map((p) => p.id).join(',')
     if (filters.directors.length) params.with_crew = filters.directors.map((p) => p.id).join(',')
@@ -141,6 +166,34 @@ export class TmdbClient {
   async similar(id: number, page = 1): Promise<MovieSummary[]> {
     const data = await this.get<TmdbPageRaw>(`/movie/${id}/similar`, { page })
     return mapPage(data).results
+  }
+
+  rememberRuntime(id: number, runtime?: number): void {
+    if (runtime && runtime > 0 && !runtimeCache.has(id)) runtimeCache.set(id, runtime)
+  }
+
+  runtimeOf(id: number): number | undefined {
+    return runtimeCache.get(id) ?? undefined
+  }
+
+  async prefetchRuntimes(ids: number[]): Promise<void> {
+    const missing = [...new Set(ids)].filter((id) => !runtimeCache.has(id))
+    const queue = [...missing]
+    const workerCount = Math.min(6, queue.length)
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (queue.length) {
+          const id = queue.shift()
+          if (id == null) return
+          try {
+            const data = await this.get<{ runtime: number | null }>(`/movie/${id}`)
+            runtimeCache.set(id, data.runtime && data.runtime > 0 ? data.runtime : null)
+          } catch {
+            runtimeCache.set(id, null)
+          }
+        }
+      })
+    )
   }
 }
 
