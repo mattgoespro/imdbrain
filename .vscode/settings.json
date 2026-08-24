@@ -1,0 +1,46 @@
+{
+  "debug.enableStatusBarColor": true,
+  "debug.internalConsoleOptions": "openOnSessionStart",
+  "debug.toolBarLocation": "commandCenter",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.fontFamily": "Fira Code, Ubuntu Mono, monospace",
+  "editor.fontSize": 12,
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "editor.letterSpacing": -0.4,
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+  "eslint.probe": ["typescript", "typescriptreact", "javascript"],
+  "eslint.validate": ["typescript", "typescriptreact", "javascript"],
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "gitProjectManager.baseProjectsFolders": ["%USERPROFILE%\\Desktop\\Code"],
+  "gitProjectManager.maxDepthRecursion": 2,
+  "gitProjectManager.openInNewWindow": true,
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "tailwindCSS.classAttributes": ["class", "className"],
+  "tailwindCSS.classFunctions": ["cn"],
+  "tailwindCSS.experimental.configFile": "src/renderer/src/styles/index.css",
+  "tailwindCSS.includeLanguages": {
+    "javascript": "javascript",
+    "javascriptreact": "javascript",
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  "terminal.integrated.automationProfile.windows": {
+    "args": ["-l"],
+    "color": "terminal.ansiMagenta",
+    "icon": "terminal-bash",
+    "path": "${env:PROGRAMFILES}\\Git\\bin\\bash.exe"
+  },
+  "terminal.integrated.defaultProfile.windows": "Git Bash",
+  "terminal.integrated.fontFamily": "Ubuntu Mono, IBM Plex Mono, monospace",
+  "terminal.integrated.fontSize": 12,
+  "workbench.activityBar.orientation": "vertical",
+  "workbench.colorTheme": "Default Dark Modern"
+}

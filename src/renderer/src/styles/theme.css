@@ -1,0 +1,24 @@
+@theme {
+  --font-sans: Inter, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    @apply m-0 h-full font-sans text-ink;
+    font-optical-sizing: auto;
+  }
+
+  body {
+    overflow: hidden;
+    background:
+      radial-gradient(900px 520px at 8% -20%, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 50%),
+      radial-gradient(800px 480px at 100% 110%, rgb(255 255 255 / 0.04), transparent 46%),
+      var(--color-canvas);
+  }
+}

@@ -1,0 +1,48 @@
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3a3a42;
+    border-radius: 99px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  input[type='text'],
+  input[type='number'],
+  input[type='password'],
+  textarea {
+    @apply field-control;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: var(--color-accent);
+  }
+}

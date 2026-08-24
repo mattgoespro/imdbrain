@@ -6,33 +6,39 @@ import type {
   ImportProgress,
   LibraryEntry,
   MovieDetails,
+  MovieEnrichment,
+  MovieSummary,
   PagedMovies,
   Settings,
   TasteProfile,
   WatchProvider,
   WatchStatus,
   KeywordRef,
-  PersonRef,
-  MovieSummary
+  MediaType,
+  PersonRef
 } from '../shared/types'
 
 const api = {
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', patch),
   configured: (): Promise<boolean> => ipcRenderer.invoke('tmdb:configured'),
-  genres: (): Promise<Genre[]> => ipcRenderer.invoke('tmdb:genres'),
+  genres: (mediaType?: MediaType): Promise<Genre[]> => ipcRenderer.invoke('tmdb:genres', mediaType),
   providers: (): Promise<WatchProvider[]> => ipcRenderer.invoke('tmdb:providers'),
   searchPeople: (query: string): Promise<PersonRef[]> => ipcRenderer.invoke('tmdb:searchPeople', query),
   searchKeywords: (query: string): Promise<KeywordRef[]> => ipcRenderer.invoke('tmdb:searchKeywords', query),
   discover: (filters: DiscoverFilters): Promise<PagedMovies> => ipcRenderer.invoke('tmdb:discover', filters),
-  movie: (id: number): Promise<MovieDetails> => ipcRenderer.invoke('tmdb:movie', id),
+  movie: (id: number, mediaType?: MediaType): Promise<MovieDetails> =>
+    ipcRenderer.invoke('tmdb:movie', id, mediaType),
+  movieMeta: (movies: MovieSummary[]): Promise<Record<string, MovieEnrichment>> =>
+    ipcRenderer.invoke('tmdb:movieMeta', movies),
   listLibrary: (): Promise<LibraryEntry[]> => ipcRenderer.invoke('library:list'),
   upsertLibrary: (payload: {
     movie: MovieSummary | MovieDetails
     status: WatchStatus
     rating?: number
   }): Promise<LibraryEntry[]> => ipcRenderer.invoke('library:upsert', payload),
-  removeLibrary: (tmdbId: number): Promise<LibraryEntry[]> => ipcRenderer.invoke('library:remove', tmdbId),
+  removeLibrary: (tmdbId: number, mediaType?: MediaType): Promise<LibraryEntry[]> =>
+    ipcRenderer.invoke('library:remove', tmdbId, mediaType),
   clearLibrary: (): Promise<LibraryEntry[]> => ipcRenderer.invoke('library:clear'),
   exportLibrary: (): Promise<{ ok: boolean; path?: string }> => ipcRenderer.invoke('library:export'),
   importImdbCsv: (): Promise<ImportProgress> => ipcRenderer.invoke('library:importImdbCsv'),

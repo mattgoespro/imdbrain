@@ -1,11 +1,11 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { defaultSettings, type LibraryEntry, type Settings } from '../shared/types'
+import { defaultSettings, titleKey, type LibraryEntry, type MediaType, type Settings } from '../shared/types'
 
 interface PersistedState {
   settings: Settings
-  library: Record<number, LibraryEntry>
+  library: Record<string, LibraryEntry>
 }
 
 function emptyState(): PersistedState {
@@ -27,9 +27,15 @@ export class AppStore {
     try {
       if (!existsSync(this.path)) return emptyState()
       const raw = JSON.parse(readFileSync(this.path, 'utf8')) as Partial<PersistedState>
+      const library: Record<string, LibraryEntry> = {}
+      for (const entry of Object.values(raw.library ?? {})) {
+        if (!entry?.tmdbId) continue
+        const normalized = normalizeEntry(entry)
+        library[titleKey(normalized)] = normalized
+      }
       return {
         settings: { ...defaultSettings(), ...(raw.settings ?? {}) },
-        library: raw.library ?? {}
+        library
       }
     } catch {
       return emptyState()
@@ -54,18 +60,19 @@ export class AppStore {
     return Object.values(this.state.library).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   }
 
-  getEntry(tmdbId: number): LibraryEntry | undefined {
-    return this.state.library[tmdbId]
+  getEntry(tmdbId: number, mediaType: MediaType = 'movie'): LibraryEntry | undefined {
+    return this.state.library[titleKey({ tmdbId, mediaType })]
   }
 
   upsertEntry(entry: LibraryEntry): LibraryEntry {
-    this.state.library[entry.tmdbId] = entry
+    const normalized = normalizeEntry(entry)
+    this.state.library[titleKey(normalized)] = normalized
     this.save()
-    return entry
+    return normalized
   }
 
-  removeEntry(tmdbId: number): void {
-    delete this.state.library[tmdbId]
+  removeEntry(tmdbId: number, mediaType: MediaType = 'movie'): void {
+    delete this.state.library[titleKey({ tmdbId, mediaType })]
     this.save()
   }
 
@@ -83,5 +90,14 @@ export class AppStore {
       null,
       2
     )
+  }
+}
+
+function normalizeEntry(entry: LibraryEntry): LibraryEntry {
+  const mediaType = entry.mediaType ?? 'movie'
+  return {
+    ...entry,
+    mediaType,
+    titleKind: entry.titleKind ?? (mediaType === 'tv' ? 'tv' : 'movie')
   }
 }

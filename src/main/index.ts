@@ -15,13 +15,13 @@ function createWindow(): void {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#0b0b0d',
+    backgroundColor: '#0e0e10',
     title: 'IMDBrain',
     icon,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#0b0b0d',
-      symbolColor: '#f5c518',
+      color: '#0e0e10',
+      symbolColor: '#ff7a3c',
       height: 36
     },
     webPreferences: {

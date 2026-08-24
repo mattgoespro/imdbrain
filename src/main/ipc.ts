@@ -1,27 +1,31 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { readFileSync, writeFileSync } from 'fs'
-import type {
-  DiscoverFilters,
-  ForYouResult,
-  Genre,
-  ImportProgress,
-  LibraryEntry,
-  MovieDetails,
-  MovieSummary,
-  PagedMovies,
-  RankedMovie,
-  Settings,
-  WatchProvider,
-  WatchStatus
+import {
+  mediaTypeOf,
+  sortMovies,
+  titleKey,
+  type DiscoverFilters,
+  type ForYouResult,
+  type Genre,
+  type ImportProgress,
+  type LibraryEntry,
+  type MediaType,
+  type MovieDetails,
+  type MovieEnrichment,
+  type MovieSummary,
+  type PagedMovies,
+  type Settings,
+  type WatchProvider,
+  type WatchStatus
 } from '../shared/types'
-import { parseImdbRatingsCsv } from './csv'
+import { parseImdbRatingsCsv, preferredMediaType } from './csv'
 import { buildProfile, describeProfile, pickSeeds, publicProfile, scoreMovie } from './ranking'
 import type { AppStore } from './store'
 import { TmdbClient, TmdbError } from './tmdb'
 
 let store: AppStore
 let getWindow: () => BrowserWindow | null
-let genreCache: Genre[] = []
+let genreCache: Partial<Record<MediaType, Genre[]>> = {}
 
 export function registerIpc(appStore: AppStore, windowGetter: () => BrowserWindow | null): void {
   store = appStore
@@ -29,20 +33,23 @@ export function registerIpc(appStore: AppStore, windowGetter: () => BrowserWindo
 
   ipcMain.handle('settings:get', () => store.getSettings())
   ipcMain.handle('settings:set', (_e, patch: Partial<Settings>) => {
-    genreCache = []
+    genreCache = {}
     return store.setSettings(patch)
   })
   ipcMain.handle('tmdb:configured', () => client().configured())
-  ipcMain.handle('tmdb:genres', () => loadGenres())
+  ipcMain.handle('tmdb:genres', (_e, mediaType?: MediaType) => loadGenres(mediaType ?? 'movie'))
   ipcMain.handle('tmdb:providers', () => loadProviders())
   ipcMain.handle('tmdb:searchPeople', (_e, query: string) => client().searchPeople(query))
   ipcMain.handle('tmdb:searchKeywords', (_e, query: string) => client().searchKeywords(query))
   ipcMain.handle('tmdb:discover', (_e, filters: DiscoverFilters) => discover(filters))
-  ipcMain.handle('tmdb:movie', (_e, id: number) => client().movie(id))
+  ipcMain.handle('tmdb:movie', (_e, id: number, mediaType?: MediaType) =>
+    client().title(id, mediaType ?? 'movie')
+  )
+  ipcMain.handle('tmdb:movieMeta', (_e, movies: MovieSummary[]) => enrichMovies(movies))
   ipcMain.handle('library:list', () => store.listLibrary())
   ipcMain.handle('library:upsert', (_e, payload: LibraryUpsert) => upsertLibrary(payload))
-  ipcMain.handle('library:remove', (_e, tmdbId: number) => {
-    store.removeEntry(tmdbId)
+  ipcMain.handle('library:remove', (_e, tmdbId: number, mediaType?: MediaType) => {
+    store.removeEntry(tmdbId, mediaType ?? 'movie')
     return store.listLibrary()
   })
   ipcMain.handle('library:clear', () => {
@@ -53,7 +60,7 @@ export function registerIpc(appStore: AppStore, windowGetter: () => BrowserWindo
   ipcMain.handle('library:importImdbCsv', () => importImdbCsv())
   ipcMain.handle('ranking:forYou', () => forYou())
   ipcMain.handle('ranking:profile', async () => {
-    const genres = await loadGenres().catch(() => [] as Genre[])
+    const genres = await loadMergedGenres()
     return publicProfile(buildProfile(store.listLibrary(), genres))
   })
 }
@@ -65,14 +72,26 @@ interface LibraryUpsert {
 }
 
 function client(): TmdbClient {
-  return new TmdbClient(store.getSettings().tmdbApiKey || process.env.TMDB_API_KEY || '')
+  const settings = store.getSettings()
+  return new TmdbClient(settings.tmdbApiKey || process.env.TMDB_API_KEY || '', settings.region || 'US')
 }
 
-async function loadGenres(): Promise<Genre[]> {
-  if (genreCache.length) return genreCache
-  const data = await client().genres()
-  genreCache = data.genres
-  return genreCache
+async function loadGenres(mediaType: MediaType = 'movie'): Promise<Genre[]> {
+  const cached = genreCache[mediaType]
+  if (cached?.length) return cached
+  const data = await client().genres(mediaType)
+  genreCache[mediaType] = data.genres
+  return data.genres
+}
+
+async function loadMergedGenres(): Promise<Genre[]> {
+  const [movies, shows] = await Promise.all([
+    loadGenres('movie').catch(() => [] as Genre[]),
+    loadGenres('tv').catch(() => [] as Genre[])
+  ])
+  const merged = new Map<number, Genre>()
+  for (const genre of [...movies, ...shows]) merged.set(genre.id, genre)
+  return [...merged.values()]
 }
 
 async function loadProviders(): Promise<WatchProvider[]> {
@@ -85,16 +104,17 @@ async function loadProviders(): Promise<WatchProvider[]> {
 
 async function discover(filters: DiscoverFilters): Promise<PagedMovies> {
   const tmdb = client()
-  const library = new Map(store.listLibrary().map((e) => [e.tmdbId, e]))
-  const genres = await loadGenres().catch(() => [] as Genre[])
+  const library = libraryMap(store.listLibrary())
+  const genres = await loadMergedGenres()
   const profile = buildProfile(store.listLibrary(), genres)
   const mode = store.getSettings().rankingMode
   const query = filters.query.trim()
+  const mediaType = mediaTypeOf(filters.titleKind)
 
   let page = { page: filters.page, totalPages: 1, totalResults: 0, results: [] as MovieSummary[] }
 
   if (/^tt\d{5,}$/i.test(query)) {
-    const found = await tmdb.findByImdb(query)
+    const found = await tmdb.findByImdb(query, mediaType)
     page = {
       page: 1,
       totalPages: found ? 1 : 0,
@@ -102,12 +122,16 @@ async function discover(filters: DiscoverFilters): Promise<PagedMovies> {
       results: found ? [found] : []
     }
   } else if (query) {
-    page = await tmdb.searchMovies(query, filters.page)
+    page =
+      mediaType === 'tv'
+        ? await tmdb.searchTv(query, filters.page, filters.titleKind)
+        : await tmdb.searchMovies(query, filters.page)
     page.results = page.results.filter((movie) => matchesLocalFilters(movie, filters))
   } else {
     const extra = filters.sortBy === 'match' && filters.page === 1 ? 3 : 0
+    const startPage = Math.max(1, filters.page)
     const pages = await Promise.all(
-      Array.from({ length: 1 + extra }, (_, i) => tmdb.discover(filters, filters.page + i))
+      Array.from({ length: 1 + extra }, (_, i) => tmdb.discover(filters, startPage + i))
     )
     const seen = new Set<number>()
     const results: MovieSummary[] = []
@@ -119,7 +143,7 @@ async function discover(filters: DiscoverFilters): Promise<PagedMovies> {
       }
     }
     page = {
-      page: filters.page,
+      page: startPage + extra,
       totalPages: pages[0]?.totalPages ?? 1,
       totalResults: pages[0]?.totalResults ?? results.length,
       results
@@ -128,26 +152,22 @@ async function discover(filters: DiscoverFilters): Promise<PagedMovies> {
 
   let results = page.results
   if (filters.hideWatched) {
-    results = results.filter((m) => library.get(m.tmdbId)?.status !== 'watched')
+    results = results.filter((m) => library.get(titleKey(m))?.status !== 'watched')
   }
   if (filters.hideWatchlist) {
-    results = results.filter((m) => library.get(m.tmdbId)?.status !== 'watchlist')
+    results = results.filter((m) => library.get(titleKey(m))?.status !== 'watchlist')
   }
-  results = results.filter((m) => library.get(m.tmdbId)?.status !== 'skipped')
+  results = results.filter((m) => library.get(titleKey(m))?.status !== 'skipped')
 
-  for (const entry of library.values()) {
-    tmdb.rememberRuntime(entry.tmdbId, entry.runtime)
-  }
-  await tmdb.prefetchRuntimes(results.map((movie) => movie.tmdbId))
-  results = results.map((movie) => ({
-    ...movie,
-    runtime: movie.runtime ?? tmdb.runtimeOf(movie.tmdbId)
-  }))
+  seedLibraryMeta(tmdb, library)
+  results = results.map((movie) => tmdb.hydrateMovie(movie, library.get(titleKey(movie))))
+  void tmdb.prefetchMovieMeta(results)
 
-  let ranked: RankedMovie[] = results.map((movie) => scoreMovie(movie, profile, mode, library))
-  if (filters.sortBy === 'match') {
-    ranked.sort((a, b) => b.match - a.match)
-  }
+  const ranked = sortMovies(
+    results.map((movie) => scoreMovie(movie, profile, mode, library)),
+    filters.sortBy
+  )
+  if (ranked[0]) void tmdb.title(ranked[0].tmdbId, ranked[0].mediaType).catch(() => undefined)
 
   return {
     page: page.page,
@@ -170,12 +190,13 @@ function matchesLocalFilters(movie: MovieSummary, filters: DiscoverFilters): boo
 
 async function upsertLibrary(payload: LibraryUpsert): Promise<LibraryEntry[]> {
   const now = new Date().toISOString()
-  const existing = store.getEntry(payload.movie.tmdbId)
+  const mediaType = payload.movie.mediaType ?? 'movie'
+  const existing = store.getEntry(payload.movie.tmdbId, mediaType)
   let details: MovieDetails | null = null
   const needsCredits = !(payload.movie as MovieDetails).directors && !payload.movie.directorIds?.length
   try {
     if (needsCredits || !payload.movie.imdbId) {
-      details = await client().movie(payload.movie.tmdbId)
+      details = await client().title(payload.movie.tmdbId, mediaType)
     }
   } catch {
     details = null
@@ -186,6 +207,8 @@ async function upsertLibrary(payload: LibraryUpsert): Promise<LibraryEntry[]> {
   const cast = details?.cast ?? []
   const entry: LibraryEntry = {
     tmdbId: movie.tmdbId,
+    mediaType: movie.mediaType ?? mediaType,
+    titleKind: movie.titleKind ?? existing?.titleKind ?? (mediaType === 'tv' ? 'tv' : 'movie'),
     imdbId: movie.imdbId ?? existing?.imdbId,
     title: movie.title,
     overview: movie.overview,
@@ -195,6 +218,7 @@ async function upsertLibrary(payload: LibraryUpsert): Promise<LibraryEntry[]> {
     year: movie.year,
     genreIds: movie.genreIds,
     runtime: details?.runtime ?? movie.runtime ?? existing?.runtime,
+    certification: details?.certification ?? movie.certification ?? existing?.certification,
     originalLanguage: movie.originalLanguage,
     voteAverage: movie.voteAverage,
     voteCount: movie.voteCount,
@@ -214,29 +238,32 @@ async function upsertLibrary(payload: LibraryUpsert): Promise<LibraryEntry[]> {
 
 async function forYou(): Promise<ForYouResult> {
   const libraryList = store.listLibrary()
-  const library = new Map(libraryList.map((e) => [e.tmdbId, e]))
-  const genres = await loadGenres().catch(() => [] as Genre[])
+  const library = libraryMap(libraryList)
+  const genres = await loadMergedGenres()
   const profile = buildProfile(libraryList, genres)
   const insights = describeProfile(profile)
   const mode = store.getSettings().rankingMode
   const tmdb = client()
+  const movieGenreIds = new Set((await loadGenres('movie').catch(() => [] as Genre[])).map((genre) => genre.id))
 
-  const candidates = new Map<number, MovieSummary>()
+  const candidates = new Map<string, MovieSummary>()
   const seeds = pickSeeds(libraryList)
 
   const tasks: Promise<MovieSummary[]>[] = seeds.slice(0, 6).flatMap((seed) => [
-    tmdb.recommendations(seed.tmdbId).catch(() => [] as MovieSummary[]),
-    tmdb.similar(seed.tmdbId).catch(() => [] as MovieSummary[])
+    tmdb.recommendations(seed.tmdbId, 1, seed.mediaType ?? 'movie').catch(() => [] as MovieSummary[]),
+    tmdb.similar(seed.tmdbId, 1, seed.mediaType ?? 'movie').catch(() => [] as MovieSummary[])
   ])
 
   const topGenreIds = [...profile.genres.entries()]
     .sort((a, b) => b[1].weight - a[1].weight)
-    .slice(0, 3)
     .map(([id]) => id)
+    .filter((id) => movieGenreIds.has(id))
+    .slice(0, 3)
 
   const year = new Date().getFullYear()
   const baseFilters: DiscoverFilters = {
     query: '',
+    titleKind: 'movie',
     genres: topGenreIds.slice(0, 2),
     withoutGenres: [],
     yearMin: 1970,
@@ -278,16 +305,21 @@ async function forYou(): Promise<ForYouResult> {
   const batches = await Promise.all(tasks)
   for (const batch of batches) {
     for (const movie of batch) {
-      const status = library.get(movie.tmdbId)?.status
+      const status = library.get(titleKey(movie))?.status
       if (status === 'watched' || status === 'skipped') continue
-      if (!candidates.has(movie.tmdbId)) candidates.set(movie.tmdbId, movie)
+      if (!candidates.has(titleKey(movie))) candidates.set(titleKey(movie), movie)
     }
   }
 
+  seedLibraryMeta(tmdb, library)
+
   const ranked = [...candidates.values()]
+    .map((movie) => tmdb.hydrateMovie(movie, library.get(titleKey(movie))))
     .map((movie) => scoreMovie(movie, profile, mode, library))
     .sort((a, b) => b.match - a.match)
     .slice(0, 40)
+
+  void tmdb.prefetchMovieMeta(ranked)
 
   return { profile: publicProfile(profile), insights, movies: ranked }
 }
@@ -336,7 +368,7 @@ async function importImdbCsv(): Promise<ImportProgress> {
     progress.title = row.title
     emitProgress(progress)
     try {
-      const summary = await tmdb.findByImdb(row.imdbId)
+      const summary = await tmdb.findByImdb(row.imdbId, preferredMediaType(row.titleType))
       if (!summary) {
         progress.skipped++
         continue
@@ -346,7 +378,7 @@ async function importImdbCsv(): Promise<ImportProgress> {
         status: 'watched',
         rating: row.rating
       })
-      const entry = store.getEntry(summary.tmdbId)
+      const entry = store.getEntry(summary.tmdbId, summary.mediaType)
       if (entry && row.dateRated) {
         store.upsertEntry({ ...entry, ratedAt: row.dateRated, watchedAt: row.dateRated })
       }
@@ -365,4 +397,56 @@ async function importImdbCsv(): Promise<ImportProgress> {
 
 function emitProgress(progress: ImportProgress): void {
   getWindow()?.webContents.send('library:importProgress', { ...progress })
+}
+
+function libraryMap(entries: LibraryEntry[]): Map<string, LibraryEntry> {
+  return new Map(entries.map((entry) => [titleKey(entry), entry]))
+}
+
+function seedLibraryMeta(tmdb: TmdbClient, library: Map<string, LibraryEntry>): void {
+  for (const entry of library.values()) {
+    const mediaType = entry.mediaType ?? 'movie'
+    tmdb.rememberRuntime(entry.tmdbId, entry.runtime, mediaType)
+    tmdb.rememberCertification(entry.tmdbId, entry.certification, mediaType)
+    if (entry.directorIds.length || entry.castIds.length) {
+      tmdb.rememberCredits(
+        entry.tmdbId,
+        {
+          directorIds: entry.directorIds,
+          directorNames: entry.directorNames,
+          castIds: entry.castIds,
+          castNames: entry.castNames
+        },
+        mediaType
+      )
+    }
+  }
+}
+
+async function enrichMovies(movies: MovieSummary[]): Promise<Record<string, MovieEnrichment>> {
+  if (!movies.length) return {}
+  const tmdb = client()
+  const library = libraryMap(store.listLibrary())
+  seedLibraryMeta(tmdb, library)
+  await tmdb.prefetchMovieMeta(movies)
+  const genres = await loadMergedGenres()
+  const profile = buildProfile(store.listLibrary(), genres)
+  const mode = store.getSettings().rankingMode
+  const patches: Record<string, MovieEnrichment> = {}
+  for (const movie of movies) {
+    const ranked = scoreMovie(tmdb.hydrateMovie(movie, library.get(titleKey(movie))), profile, mode, library)
+    patches[titleKey(movie)] = {
+      runtime: ranked.runtime,
+      certification: ranked.certification,
+      directorIds: ranked.directorIds,
+      directorNames: ranked.directorNames,
+      castIds: ranked.castIds,
+      castNames: ranked.castNames,
+      seasonCount: ranked.seasonCount,
+      episodeCount: ranked.episodeCount,
+      match: ranked.match,
+      reasons: ranked.reasons
+    }
+  }
+  return patches
 }

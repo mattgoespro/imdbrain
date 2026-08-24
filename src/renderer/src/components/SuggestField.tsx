@@ -37,9 +37,9 @@ export default function SuggestField<T extends { id: number; name: string }>({
   }
 
   return (
-    <label className="field">
+    <label className="mb-1 flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted">
       {label}
-      <div className="suggest">
+      <div className="relative">
         <input
           type="text"
           value={query}
@@ -47,20 +47,29 @@ export default function SuggestField<T extends { id: number; name: string }>({
           onChange={(e) => setQuery(e.target.value)}
         />
         {hits.length ? (
-          <div className="suggest-list">
+          <div className="absolute top-[calc(100%+0.25rem)] right-0 left-0 z-6 overflow-hidden rounded-app border border-line bg-raised shadow-panel">
             {hits.map((hit) => (
-              <button key={hit.id} type="button" onClick={() => add(hit)}>
+              <button
+                key={hit.id}
+                type="button"
+                className="block w-full border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent-soft"
+                onClick={() => add(hit)}
+              >
                 {hit.name}
               </button>
             ))}
           </div>
         ) : null}
       </div>
-      <div className="chips">
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
         {values.map((value) => (
-          <span className="chip" key={value.id}>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/6 py-1 pr-2 pl-2.5 text-xs" key={value.id}>
             {value.name}
-            <button type="button" onClick={() => onChange(values.filter((v) => v.id !== value.id))}>
+            <button
+              type="button"
+              className="border-0 bg-transparent px-0.5 text-muted"
+              onClick={() => onChange(values.filter((v) => v.id !== value.id))}
+            >
               ×
             </button>
           </span>

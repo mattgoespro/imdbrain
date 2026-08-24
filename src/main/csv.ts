@@ -27,7 +27,7 @@ export function parseImdbRatingsCsv(text: string): ImdbCsvRow[] {
     const rating = Number(row[idx.rating])
     const titleType = (idx.type >= 0 ? row[idx.type] : 'movie')?.trim().toLowerCase() ?? 'movie'
     if (!/^tt\d+$/i.test(imdbId) || !Number.isFinite(rating)) continue
-    if (titleType && titleType !== 'movie' && titleType !== 'tv movie') continue
+    if (titleType && !isSupportedTitleType(titleType)) continue
     out.push({
       imdbId,
       rating: Math.max(1, Math.min(10, Math.round(rating))),
@@ -37,6 +37,14 @@ export function parseImdbRatingsCsv(text: string): ImdbCsvRow[] {
     })
   }
   return out
+}
+
+export function preferredMediaType(titleType: string): 'movie' | 'tv' {
+  return /tv ?(series|mini)/i.test(titleType) ? 'tv' : 'movie'
+}
+
+function isSupportedTitleType(type: string): boolean {
+  return /^(movie|tv ?movie|tv ?(mini ?)?series)$/i.test(type)
 }
 
 function parseCsv(text: string): string[][] {

@@ -8,6 +8,7 @@ import type {
   RankingMode,
   TasteProfile
 } from '../shared/types'
+import { titleKey } from '../shared/types'
 
 interface InternalProfile {
   ratedCount: number
@@ -43,11 +44,16 @@ const WEIGHTS = {
   director: 0.16,
   cast: 0.12,
   decade: 0.1,
-  quality: 0.14,
   runtime: 0.06,
   language: 0.05,
   pattern: 0.07
 }
+
+const PERSONAL_WEIGHT_SUM = Object.values(WEIGHTS).reduce((sum, weight) => sum + weight, 0)
+const GENRE_VETO_THRESHOLD = -0.25
+const GENRE_VETO_PULL = 0.9
+const RATING_DELTA = 2.2
+const PRIOR_STRENGTH = 8
 
 export function buildProfile(library: LibraryEntry[], genres: Genre[]): InternalProfile {
   const genreNames = new Map(genres.map((g) => [g.id, g.name]))
@@ -185,19 +191,13 @@ export function scoreMovie(
   movie: MovieSummary,
   profile: InternalProfile,
   mode: RankingMode,
-  library: Map<number, LibraryEntry>
+  library: Map<string, LibraryEntry>
 ): RankedMovie {
   const reasons: RankReason[] = []
-  const entry = library.get(movie.tmdbId)
+  const entry = library.get(titleKey(movie))
 
-  const genreScore = average(
-    movie.genreIds.map((id) => profile.genres.get(id)?.weight ?? 0)
-  )
-  const genreNames = movie.genreIds
-    .map((id) => profile.names.genres.get(id))
-    .filter(Boolean)
-    .slice(0, 2)
-  pushReason(reasons, genreScore, 'Genre taste', genreNames.length ? genreNames.join(', ') : 'Limited genre overlap')
+  const genre = genreAffinity(movie.genreIds, profile)
+  pushReason(reasons, genre.score, 'Genre taste', genre.detail)
 
   const decade = movie.year ? decadeOf(movie.year) : ''
   const decadeScore = decade ? (profile.decades.get(decade)?.weight ?? 0) : 0
@@ -221,7 +221,8 @@ export function scoreMovie(
     pushReason(reasons, castScore, 'Cast', knownCast.slice(0, 2).join(', '))
   }
 
-  const quality = bayesianQuality(movie.voteAverage, movie.voteCount)
+  const publicRating = bayesianRating(movie.voteAverage, movie.voteCount)
+  const quality = clamp((publicRating - 6.2) / 2.4, -1, 1)
   pushReason(reasons, quality, 'Public rating', `${movie.voteAverage.toFixed(1)} from ${formatCount(movie.voteCount)} votes`)
 
   const runtimeScore =
@@ -257,18 +258,20 @@ export function scoreMovie(
     mode === 'diverse' ? 'Surprise mix vs recent watches' : mode === 'same' ? 'Continues your recent streak' : 'Balanced against recent watches'
   )
 
-  const raw =
-    WEIGHTS.genre * genreScore +
-    WEIGHTS.director * directorScore +
-    WEIGHTS.cast * castScore +
-    WEIGHTS.decade * decadeScore +
-    WEIGHTS.quality * quality +
-    WEIGHTS.runtime * runtimeScore +
-    WEIGHTS.language * languageScore +
-    WEIGHTS.pattern * pattern
+  const personal =
+    (WEIGHTS.genre * genre.score +
+      WEIGHTS.director * directorScore +
+      WEIGHTS.cast * castScore +
+      WEIGHTS.decade * decadeScore +
+      WEIGHTS.runtime * runtimeScore +
+      WEIGHTS.language * languageScore +
+      WEIGHTS.pattern * pattern) /
+    PERSONAL_WEIGHT_SUM
 
-  const coldStartBoost = profile.ratedCount < 3 ? quality * 0.35 : 0
-  const match = clamp(Math.round((sigmoid(raw + coldStartBoost) * 100 + Number.EPSILON) * 10) / 10, 1, 99)
+  const personalRating = profile.globalAvg + personal * RATING_DELTA
+  const priorMix = PRIOR_STRENGTH / (PRIOR_STRENGTH + profile.ratedCount)
+  const predicted = priorMix * publicRating + (1 - priorMix) * personalRating
+  const match = clamp(round1(predicted * 10), 1, 99)
 
   return {
     ...movie,
@@ -278,7 +281,9 @@ export function scoreMovie(
 }
 
 export function pickSeeds(library: LibraryEntry[]): LibraryEntry[] {
-  const watched = library.filter((e) => e.status === 'watched' && (e.rating ?? 0) >= 7)
+  const watched = library.filter(
+    (e) => (e.mediaType ?? 'movie') === 'movie' && e.status === 'watched' && (e.rating ?? 0) >= 7
+  )
   const ranked = [...watched].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.voteAverage ?? 0) - (a.voteAverage ?? 0))
   const seeds: LibraryEntry[] = []
   const usedGenres = new Set<number>()
@@ -321,11 +326,51 @@ function pushReason(reasons: RankReason[], weight: number, label: string, detail
   reasons.push({ label, detail, weight: round2(weight) })
 }
 
-function bayesianQuality(voteAverage: number, voteCount: number): number {
+function genreAffinity(
+  genreIds: number[],
+  profile: InternalProfile
+): { score: number; detail: string } {
+  const signals = genreIds.map((id) => ({
+    id,
+    name: profile.names.genres.get(id),
+    weight: profile.genres.get(id)?.weight ?? 0
+  }))
+  const named = signals.map((signal) => signal.name).filter(Boolean).slice(0, 2)
+  const fallback = named.length ? named.join(', ') : 'Limited genre overlap'
+  if (!signals.length) return { score: 0, detail: fallback }
+
+  const best = signals.reduce((lead, signal) => (signal.weight > lead.weight ? signal : lead))
+  const disliked = signals.filter((signal) => signal.weight <= GENRE_VETO_THRESHOLD)
+  const liked = signals.filter((signal) => signal.weight > 0 && signal.id !== best.id)
+
+  if (disliked.length === signals.length) {
+    const score = clamp(average(disliked.map((signal) => signal.weight)), -1, 1)
+    const vetoNames = disliked.map((signal) => signal.name).filter(Boolean).slice(0, 2)
+    return {
+      score,
+      detail: vetoNames.length ? `${vetoNames.join(', ')} clashes with your taste` : fallback
+    }
+  }
+
+  let score = best.weight
+  for (const signal of disliked) {
+    score += Math.min(0, signal.weight) * GENRE_VETO_PULL
+  }
+  if (liked.length) {
+    score = score * 0.75 + average(liked.map((signal) => signal.weight)) * 0.25
+  }
+
+  const vetoNames = disliked.map((signal) => signal.name).filter(Boolean).slice(0, 2)
+  const detail = vetoNames.length
+    ? `${best.name ?? 'Strong genre'}, but ${vetoNames.join(', ')} is a poor fit`
+    : fallback
+  return { score: clamp(score, -1, 1), detail }
+}
+
+function bayesianRating(voteAverage: number, voteCount: number): number {
   const m = 800
   const C = 6.8
-  const bayes = (voteCount / (voteCount + m)) * voteAverage + (m / (voteCount + m)) * C
-  return clamp((bayes - 6.2) / 2.4, -1, 1)
+  return (voteCount / (voteCount + m)) * voteAverage + (m / (voteCount + m)) * C
 }
 
 function decadeOf(year: number): string {
@@ -344,10 +389,6 @@ function average(values: number[]): number {
 function max(values: number[]): number {
   if (!values.length) return 0
   return Math.max(...values)
-}
-
-function sigmoid(x: number): number {
-  return 1 / (1 + Math.exp(-2.2 * x))
 }
 
 function clamp(n: number, min: number, max: number): number {

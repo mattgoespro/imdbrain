@@ -1,15 +1,19 @@
 import { useMemo, useState, type JSX } from 'react'
 import type { LibraryEntry, MovieSummary, WatchStatus } from '../../../shared/types'
-import { posterUrl } from '../../../shared/types'
+import { posterUrl, titleKey, titleKindLabel } from '../../../shared/types'
+import { AgeCaption } from '../components/MovieCard'
+import { btn, rankedRow, rankedThumb } from '../lib/ui'
 
 export default function Library({
   library,
   genreMap,
+  selectedId,
   onOpen,
   onChange
 }: {
   library: LibraryEntry[]
   genreMap: Map<number, string>
+  selectedId: string | null
   onOpen: (movie: MovieSummary) => void
   onChange: (library: LibraryEntry[]) => void
 }): JSX.Element {
@@ -32,43 +36,45 @@ export default function Library({
 
   return (
     <section>
-      <div className="page-head">
+      <div className="mb-[22px] flex items-end justify-between gap-4">
         <div>
-          <h2>Watch patterns</h2>
-          <p>
+          <h2 className="m-0 text-[28px] font-650 tracking-title">Watch patterns</h2>
+          <p className="mt-1.5 mb-0 max-w-[640px] text-[13px] leading-[1.45] text-muted">
             Everything you rate, finish, save, or skip trains the ranker. Average score{' '}
             {avg ? avg.toFixed(1) : '—'}/10 across {library.filter((e) => e.rating != null).length} ratings.
           </p>
         </div>
       </div>
-      <div className="insights">
+      <div className="mb-[22px] grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5">
         {topGenres.map(([name, count]) => (
-          <div className="insight" key={name}>
+          <div className="border-b border-line py-3.5 text-[13px] leading-[1.45] text-muted" key={name}>
             {name} shows up in {count} watched titles.
           </div>
         ))}
       </div>
-      <div className="tabs">
+      <div className="mb-4 flex gap-1.5">
         {(['watched', 'watchlist', 'skipped', 'all'] as const).map((id) => (
-          <button key={id} className={`btn ${tab === id ? 'gold' : ''}`} onClick={() => setTab(id)}>
+          <button key={id} className={btn(tab === id && 'primary')} onClick={() => setTab(id)}>
             {id}
           </button>
         ))}
       </div>
       {!rows.length ? (
-        <div className="empty">
-          <h3>Nothing in this shelf yet</h3>
+        <div className="px-4 py-9 text-center text-muted">
+          <h3 className="mt-0 mb-2 text-[22px] tracking-[-0.03em] text-ink">Nothing in this shelf yet</h3>
           <p>Search for a movie you know well and give it a rating to start the pattern.</p>
         </div>
       ) : (
-        <div className="ranked">
+        <div className="flex flex-col">
           {rows.map((entry) => (
             <div
-              className="ranked-row"
-              key={entry.tmdbId}
+              className={rankedRow(selectedId === titleKey(entry))}
+              key={titleKey(entry)}
               onClick={() =>
                 onOpen({
                   tmdbId: entry.tmdbId,
+                  mediaType: entry.mediaType ?? 'movie',
+                  titleKind: entry.titleKind ?? (entry.mediaType === 'tv' ? 'tv' : 'movie'),
                   imdbId: entry.imdbId,
                   title: entry.title,
                   overview: entry.overview ?? '',
@@ -83,6 +89,7 @@ export default function Library({
                   voteCount: entry.voteCount,
                   adult: false,
                   runtime: entry.runtime,
+                  certification: entry.certification,
                   directorIds: entry.directorIds,
                   directorNames: entry.directorNames,
                   castIds: entry.castIds,
@@ -90,23 +97,31 @@ export default function Library({
                 })
               }
             >
-              <div className="rank-no">{entry.rating ?? '–'}</div>
+              <div className="tabular text-center text-xl font-bold tracking-title text-accent">{entry.rating ?? '–'}</div>
               {posterUrl(entry.posterPath, 'w185') ? (
-                <img src={posterUrl(entry.posterPath, 'w185') ?? ''} alt="" />
+                <img className={rankedThumb()} src={posterUrl(entry.posterPath, 'w185') ?? ''} alt="" />
               ) : (
-                <div className="thumb" />
+                <div className={rankedThumb()} />
               )}
               <div>
-                <h3>{entry.title}</h3>
-                <div className="meta">
-                  {entry.year} · {entry.status} · {entry.genreIds.map((id) => genreMap.get(id)).filter(Boolean).slice(0, 3).join(', ')}
+                <h3 className="mt-0 mb-1 text-[15px] font-650 tracking-tightish">
+                  {entry.title}
+                  <AgeCaption rating={entry.certification} />
+                </h3>
+                <div className="text-xs leading-[1.45] text-muted tabular">
+                  {entry.year} · {titleKindLabel(entry.titleKind)} · {entry.status} ·{' '}
+                  {entry.genreIds
+                    .map((id) => genreMap.get(id))
+                    .filter(Boolean)
+                    .slice(0, 3)
+                    .join(' · ')}
                 </div>
               </div>
               <button
-                className="btn ghost"
+                className={btn('ghost')}
                 onClick={async (event) => {
                   event.stopPropagation()
-                  onChange(await window.api.removeLibrary(entry.tmdbId))
+                  onChange(await window.api.removeLibrary(entry.tmdbId, entry.mediaType))
                 }}
               >
                 Remove

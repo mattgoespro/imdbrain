@@ -1,28 +1,47 @@
-import { useEffect, useState, type JSX } from 'react'
-import type { ForYouResult, MovieSummary, RankingMode, TasteProfile } from '../../../shared/types'
-import { posterUrl } from '../../../shared/types'
+import { useEffect, useRef, useState, type CSSProperties, type JSX } from 'react'
+import type { ForYouResult, MovieSummary, RankedMovie, RankingMode, TasteProfile } from '../../../shared/types'
+import { applyMovieEnrichment, titleKey } from '../../../shared/types'
+import { formatRuntime, posterUrl } from '../../../shared/types'
+import { AgeCaption } from '../components/MovieCard'
+import CatalogLoader from '../components/CatalogLoader'
+import OverlayScroll from '../components/OverlayScroll'
+import { IconRefresh } from '../components/Icons'
+import { enterDelayMs } from '../motion'
+import { cn } from '../lib/cn'
+import { iconBtn, rankedRow, rankedThumb } from '../lib/ui'
 
 export default function ForYou({
   profile,
   genreMap,
+  selectedId,
   onOpen,
   onError,
   rankingMode
 }: {
   profile: TasteProfile | null
   genreMap: Map<number, string>
+  selectedId: string | null
   onOpen: (movie: MovieSummary) => void
   onError: (message: string) => void
   rankingMode: RankingMode
 }): JSX.Element {
   const [result, setResult] = useState<ForYouResult | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [entering, setEntering] = useState(false)
+  const requestId = useRef(0)
+  const selectedIdRef = useRef(selectedId)
+  selectedIdRef.current = selectedId
 
   async function load(): Promise<void> {
+    const id = ++requestId.current
     setLoading(true)
     onError('')
     try {
-      setResult(await window.api.forYou())
+      const next = await window.api.forYou()
+      if (id !== requestId.current) return
+      setResult(next)
+      setEntering(true)
+      void applyMovieMeta(id, next.movies)
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Could not build rankings')
     } finally {
@@ -34,28 +53,68 @@ export default function ForYou({
     void load()
   }, [rankingMode])
 
+  async function applyMovieMeta(id: number, movies: RankedMovie[]): Promise<void> {
+    if (!movies.length) return
+    try {
+      const extra = await window.api.movieMeta(movies)
+      if (id !== requestId.current) return
+      let selectedUpdate: RankedMovie | undefined
+      setResult((prev) => {
+        if (!prev) return prev
+        const movies = prev.movies
+          .map((movie) => {
+              const patch = extra[titleKey(movie)]
+            if (!patch) return movie
+            return applyMovieEnrichment(movie, patch)
+          })
+          .sort((a, b) => b.match - a.match)
+        selectedUpdate = movies.find((movie) => titleKey(movie) === selectedIdRef.current)
+        return { ...prev, movies }
+      })
+      if (selectedUpdate) onOpen(selectedUpdate)
+    } catch {
+      /* captions stay empty until refresh */
+    }
+  }
+
+  useEffect(() => {
+    if (!entering) return
+    const handle = window.setTimeout(() => setEntering(false), 640)
+    return () => window.clearTimeout(handle)
+  }, [entering])
+
   const ready = (result?.profile ?? profile)?.ready
 
+  const movies = result?.movies ?? []
+  const refreshing = loading && movies.length > 0
+
   return (
-    <section>
-      <div className="page-head">
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-[22px] flex shrink-0 items-end justify-between gap-4">
         <div>
-          <h2>Ranked for you</h2>
-          <p>
+          <h2 className="m-0 text-[28px] font-650 tracking-title">Ranked for you</h2>
+          <p className="mt-1.5 mb-0 max-w-[640px] text-[13px] leading-[1.45] text-muted">
             Seeded from movies you rated highly, then re-ranked with genre affinity, directors, cast,
             era, runtime habits, and how you have been watching lately.
           </p>
         </div>
-        <div className="toolbar">
-          <button className="btn gold" onClick={() => void load()} disabled={loading}>
-            {loading ? 'Ranking…' : 'Refresh ranking'}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={iconBtn('primary', loading && 'busy')}
+            onClick={() => void load()}
+            disabled={loading}
+            aria-label="Refresh ranking"
+            title="Refresh ranking"
+          >
+            <IconRefresh />
           </button>
         </div>
       </div>
 
       {!ready ? (
-        <div className="empty">
-          <h3>Your taste model needs a few ratings</h3>
+        <div className="shrink-0 px-4 py-9 text-center text-muted">
+          <h3 className="mt-0 mb-2 text-[22px] tracking-[-0.03em] text-ink">Your taste model needs a few ratings</h3>
           <p>
             Rate at least three watched movies (or import your IMDb ratings.csv in Settings). Until then,
             rankings lean on public scores instead of your patterns.
@@ -63,50 +122,74 @@ export default function ForYou({
         </div>
       ) : null}
 
-      <div className="insights">
+      <div className="mb-[22px] grid shrink-0 grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2.5">
         {(result?.insights ?? []).map((text) => (
-          <div className="insight" key={text}>
+          <div className="border-b border-line py-3.5 text-[13px] leading-[1.45] text-muted" key={text}>
             {text}
           </div>
         ))}
         {(result?.profile.topGenres ?? profile?.topGenres ?? []).slice(0, 3).map((genre) => (
-          <div className="insight" key={genre.id}>
+          <div className="border-b border-line py-3.5 text-[13px] leading-[1.45] text-muted" key={genre.id}>
             {genreMap.get(Number(genre.id)) ?? genre.name}: avg {genre.avg} across {genre.count} rated
             titles.
           </div>
         ))}
       </div>
 
-      {loading ? <div className="empty">Learning from your watch pattern…</div> : null}
-
-      <div className="ranked">
-        {result?.movies.map((movie, index) => (
-          <button className="ranked-row" key={movie.tmdbId} onClick={() => onOpen(movie)}>
-            <div className="rank-no">{String(index + 1).padStart(2, '0')}</div>
-            {posterUrl(movie.posterPath, 'w185') ? (
-              <img src={posterUrl(movie.posterPath, 'w185') ?? ''} alt="" />
-            ) : (
-              <div className="thumb" />
-            )}
-            <div>
-              <h3>
-                {movie.title} <span className="meta">{movie.year}</span>
-              </h3>
-              <div className="meta">Public {movie.voteAverage.toFixed(1)} · {movie.overview.slice(0, 140)}{movie.overview.length > 140 ? '…' : ''}</div>
-              <div className="reasons">
-                {movie.reasons.map((reason) => (
-                  <span className="reason" key={reason.label}>
-                    {reason.label}: {reason.detail}
-                  </span>
-                ))}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <OverlayScroll className={cn(refreshing && 'opacity-45')}>
+          {loading && !movies.length ? <CatalogLoader label="Ranking titles for you…" /> : null}
+          {movies.map((movie, index) => (
+            <button
+              className={rankedRow(
+                selectedId === titleKey(movie),
+                cn('mr-[var(--rail-gutter,14px)]', entering && 'animate-result-in enter-delay')
+              )}
+              key={titleKey(movie)}
+              style={{ '--enter-delay': `${enterDelayMs(index, 1, 18)}ms` } as CSSProperties}
+              onClick={() => onOpen(movie)}
+            >
+              <div className="tabular text-center text-xl font-bold tracking-title text-accent">
+                {String(index + 1).padStart(2, '0')}
               </div>
-            </div>
-            <div className="match-lg">
-              {Math.round(movie.match)}
-              <small>match</small>
-            </div>
-          </button>
-        ))}
+              {posterUrl(movie.posterPath, 'w185') ? (
+                <img className={rankedThumb()} src={posterUrl(movie.posterPath, 'w185') ?? ''} alt="" />
+              ) : (
+                <div className={rankedThumb()} />
+              )}
+              <div>
+                <h3 className="mt-0 mb-1 text-[15px] font-650 tracking-tightish">
+                  {movie.title}
+                  <AgeCaption rating={movie.certification} />
+                  <span className="ml-1.5 inline text-xs leading-[1.45] text-muted tabular">{movie.year}</span>
+                </h3>
+                <div className="text-xs leading-[1.45] text-muted tabular">
+                  {[movie.year, formatRuntime(movie.runtime), `IMDb ${movie.voteAverage.toFixed(1)}`]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {movie.reasons.map((reason) => (
+                    <span className="rounded-full border border-line px-2 py-0.5 text-[11px] text-muted" key={reason.label}>
+                      {reason.label}: {reason.detail}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="tabular text-[28px] leading-none font-bold tracking-[-0.06em] text-accent">
+                {Math.round(movie.match)}
+                <small className="mt-1.5 block text-[10px] font-semibold tracking-[0.14em] text-faint uppercase">
+                  match
+                </small>
+              </div>
+            </button>
+          ))}
+        </OverlayScroll>
+        {refreshing ? (
+          <div className="pointer-events-none absolute inset-0 z-[3] grid place-items-center bg-canvas/42">
+            <CatalogLoader label="Updating ranking…" />
+          </div>
+        ) : null}
       </div>
     </section>
   )
