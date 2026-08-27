@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { ImportProgress, LibraryEntry, RankingMode, Settings } from '../../../shared/types'
-import Select from '../components/Select'
+import Select from '../components/select'
 import { btn } from '../lib/ui'
 
 const RANKING_OPTIONS = [

@@ -1,8 +1,17 @@
-import { useEffect, useId, useRef, useState, type JSX, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type JSX,
+  type KeyboardEvent as ReactKeyboardEvent
+} from 'react'
 import { createPortal } from 'react-dom'
-import { cn } from '../lib/cn'
+import Menu from './menu'
+import Trigger from './trigger'
+import type { SelectOption } from './types'
 
-export type SelectOption = { value: string; label: string }
+export type { SelectOption }
 
 export default function Select({
   value,
@@ -11,7 +20,7 @@ export default function Select({
   ariaLabel
 }: {
   value: string
-  options: ReadonlyArray<{ value: string; label: string }>
+  options: ReadonlyArray<SelectOption>
   onChange: (value: string) => void
   ariaLabel?: string
 }): JSX.Element {
@@ -100,63 +109,29 @@ export default function Select({
 
   return (
     <div className="w-full">
-      <button
-        ref={buttonRef}
-        type="button"
-        className={cn(
-          'flex w-full min-w-0 max-w-full items-center justify-between gap-2.5 rounded-app border bg-input px-3 py-2.5 text-left text-ink outline-none transition-colors duration-140',
-          open ? 'border-accent' : 'border-line focus-visible:border-accent'
-        )}
-        aria-label={ariaLabel}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={id}
+      <Trigger
+        buttonRef={buttonRef}
+        open={open}
+        label={selected?.label ?? ''}
+        ariaLabel={ariaLabel}
+        menuId={id}
         onClick={() => setOpen((prev) => !prev)}
         onKeyDown={onButtonKey}
-      >
-        <span className="min-w-0 truncate">{selected?.label}</span>
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="size-4 shrink-0 fill-none stroke-muted stroke-[1.75] [stroke-linecap:round] [stroke-linejoin:round]"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
+      />
       {open
         ? createPortal(
-            <div
-              ref={menuRef}
+            <Menu
+              menuRef={menuRef}
               id={id}
-              className="fixed z-40 overflow-auto rounded-app border border-line bg-raised p-1 shadow-panel"
-              role="listbox"
-              tabIndex={-1}
-              style={{
-                top: menuPos.top,
-                left: menuPos.left,
-                width: menuPos.width,
-                maxHeight: menuPos.maxHeight
-              }}
+              options={options}
+              value={value}
+              top={menuPos.top}
+              left={menuPos.left}
+              width={menuPos.width}
+              maxHeight={menuPos.maxHeight}
               onKeyDown={onMenuKey}
-            >
-              {options.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="option"
-                  aria-selected={opt.value === value}
-                  className={cn(
-                    'block w-full rounded-lg border-0 px-2.5 py-2 text-left text-[13px] hover:bg-accent-soft hover:text-accent-2',
-                    opt.value === value
-                      ? 'bg-accent-soft font-semibold text-accent-2'
-                      : 'bg-transparent text-ink'
-                  )}
-                  onClick={() => choose(opt.value)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>,
+              onChoose={choose}
+            />,
             document.body
           )
         : null}

@@ -1,7 +1,7 @@
 import { useMemo, useState, type JSX } from 'react'
 import type { LibraryEntry, MovieSummary, WatchStatus } from '../../../shared/types'
 import { posterUrl, titleKey, titleKindLabel } from '../../../shared/types'
-import { AgeCaption } from '../components/MovieCard'
+import { AgeCaption } from '../components/movie-card'
 import { btn, rankedRow, rankedThumb } from '../lib/ui'
 
 export default function Library({

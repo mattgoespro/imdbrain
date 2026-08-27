@@ -8,7 +8,8 @@ import {
   type ReactNode,
   type UIEvent
 } from 'react'
-import { cn } from '../lib/cn'
+import { cn } from '../../lib/cn'
+import Thumb from './thumb'
 
 const OverlayScroll = forwardRef<
   HTMLDivElement,
@@ -90,24 +91,17 @@ const OverlayScroll = forwardRef<
         {children}
       </div>
       {thumb.show ? (
-        <div
-          className="pointer-events-none absolute top-1.5 right-0.75 bottom-1.5 z-2 w-2 rounded-full bg-rail"
-          aria-hidden="true"
-        >
-          <div
-            className={cn(
-              'pointer-events-auto absolute right-px w-1.5 cursor-ns-resize rounded-full bg-thumb opacity-100 transition-[background,width] duration-160',
-              dragging && 'w-2 bg-thumb-active'
-            )}
-            style={{ top: thumb.top, height: thumb.height }}
-            onPointerDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              drag.current = { startY: event.clientY, startTop: thumb.top, height: thumb.height }
-              setDragging(true)
-            }}
-          />
-        </div>
+        <Thumb
+          top={thumb.top}
+          height={thumb.height}
+          dragging={dragging}
+          onPointerDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            drag.current = { startY: event.clientY, startTop: thumb.top, height: thumb.height }
+            setDragging(true)
+          }}
+        />
       ) : null}
     </div>
   )
