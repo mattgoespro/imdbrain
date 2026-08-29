@@ -2,10 +2,26 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Debug API Server",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx.cmd"
+      },
+      "args": ["watch", "src/index.ts"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "presentation": {
+        "hidden": true
+      }
+    },
+    {
       "name": "Debug Main Process",
       "type": "node",
       "request": "launch",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/apps/desktop",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite",
       "windows": {
         "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite.cmd"
@@ -24,7 +40,7 @@
       "type": "chrome",
       "request": "attach",
       "port": 9222,
-      "webRoot": "${workspaceFolder}/src/renderer",
+      "webRoot": "${workspaceFolder}/apps/desktop/src/renderer",
       "timeout": 60000,
       "presentation": {
         "hidden": true
@@ -33,8 +49,8 @@
   ],
   "compounds": [
     {
-      "name": "Debug Electron App",
-      "configurations": ["Debug Main Process", "Debug Renderer Process"],
+      "name": "Debug IMDBrain",
+      "configurations": ["Debug API Server", "Debug Main Process", "Debug Renderer Process"],
       "stopAll": true,
       "presentation": {
         "hidden": false,

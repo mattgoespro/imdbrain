@@ -6,3 +6,6 @@ out
 .eslintcache
 release
 *.local
+apps/api/data
+*.tsv
+*.tsv.gz

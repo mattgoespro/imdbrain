@@ -1,4 +1,5 @@
 {
+  "colorize.languages": ["typescript", "typescriptreact", "css"],
   "debug.enableStatusBarColor": true,
   "debug.internalConsoleOptions": "openOnSessionStart",
   "debug.toolBarLocation": "commandCenter",
@@ -7,7 +8,7 @@
   },
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.fontFamily": "Fira Code, Ubuntu Mono, monospace",
-  "editor.fontSize": 12,
+  "editor.fontSize": 11,
   "editor.formatOnPaste": true,
   "editor.formatOnSave": true,
   "editor.letterSpacing": -0.4,
@@ -23,9 +24,13 @@
   "gitProjectManager.maxDepthRecursion": 2,
   "gitProjectManager.openInNewWindow": true,
   "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+  "search.exclude": {
+    "**/*-lock.json": true,
+    "**/*.md": true
+  },
   "tailwindCSS.classAttributes": ["class", "className"],
   "tailwindCSS.classFunctions": ["cn"],
-  "tailwindCSS.experimental.configFile": "src/renderer/src/styles/index.css",
+  "tailwindCSS.experimental.configFile": "apps/desktop/src/renderer/src/styles/index.css",
   "tailwindCSS.includeLanguages": {
     "javascript": "javascript",
     "javascriptreact": "javascript",
