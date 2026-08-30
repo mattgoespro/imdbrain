@@ -1,17 +1,17 @@
-import type { JSX } from 'react'
-import { AgeCaption } from '../movie-card'
+import type { JSX } from "react";
+import { AgeCaption } from "../movie-card";
 
 export default function Heading({
   title,
-  rating
+  rating,
 }: {
-  title: string
-  rating?: string
+  title: string;
+  rating?: string;
 }): JSX.Element {
   return (
-    <h2 className="mt-0 mb-1.5 text-2xl font-650 tracking-title [text-shadow:0_10px_28px_rgba(0,0,0,0.95),0_2px_8px_rgba(0,0,0,0.8)]">
+    <h2 className="mt-0 mb-1.5 text-2xl font-650 tracking-title [text-shadow:var(--imd-title-shadow)]">
       {title}
       <AgeCaption rating={rating} />
     </h2>
-  )
+  );
 }

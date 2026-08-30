@@ -1,4 +1,5 @@
-import type { JSX } from 'react'
+import type { JSX } from "react";
+import AgeCaption from "./age-caption";
 
 export default function Caption({
   compact,
@@ -6,21 +7,28 @@ export default function Caption({
   year,
   seasons,
   runtime,
-  certification
+  certification,
 }: {
-  compact?: boolean
-  kind: string | null
-  year: number | null | undefined
-  seasons: string | null
-  runtime: string | null
-  certification?: string
+  compact?: boolean;
+  kind: string | null;
+  year: number | null | undefined;
+  seasons: string | null;
+  runtime: string | null;
+  certification?: string;
 }): JSX.Element | null {
-  const parts = [kind, year ?? '—', seasons, runtime, certification].filter(Boolean)
-  if (!parts.length) return null
+  const parts = [kind, year ?? "—", seasons, runtime].filter(Boolean);
+  if (!parts.length) return null;
 
   return (
-    <div className={compact ? 'text-[11px] leading-[1.4] text-muted tabular' : 'text-xs leading-[1.45] text-muted tabular'}>
-      {parts.join(' · ')}
+    <div
+      className={
+        compact
+          ? "text-[11px] leading-[1.4] text-muted tabular"
+          : "text-xs leading-[1.45] text-muted tabular"
+      }
+    >
+      {parts.join(" · ")}
+      <AgeCaption rating={certification} />
     </div>
-  )
+  );
 }

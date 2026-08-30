@@ -17,12 +17,16 @@ import type {
   Settings,
   TasteProfile,
 } from "../../shared/types";
+import { isAppearanceOnlyPatch } from "../../shared/appearance";
 import {
   defaultFilters,
   defaultSettings,
   mediaTypeOf,
   titleKey,
 } from "../../shared/types";
+import { applySearchHistory } from "../../shared/search-history";
+import { applyAppearance } from "./lib/appearance";
+import { listSearchHistory } from "./lib/search-history-store";
 import Discover from "./views/Discover";
 import ForYou from "./views/ForYou";
 import Library from "./views/Library";
@@ -45,7 +49,11 @@ export default function App(): JSX.Element {
   const [tvGenres, setTvGenres] = useState<Genre[]>([]);
   const [library, setLibrary] = useState<LibraryEntry[]>([]);
   const [profile, setProfile] = useState<TasteProfile | null>(null);
-  const [filters, setFilters] = useState<DiscoverFilters>(defaultFilters());
+  const [filters, setFilters] = useState<DiscoverFilters>(() => {
+    const defaults = defaultFilters();
+    const latestSearch = listSearchHistory()[0];
+    return latestSearch ? applySearchHistory(defaults, latestSearch) : defaults;
+  });
   const [selected, setSelected] = useState<MovieSummary | null>(null);
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [error, setError] = useState("");
@@ -91,6 +99,11 @@ export default function App(): JSX.Element {
   }, [refresh]);
 
   useEffect(() => {
+    if (booting) return;
+    applyAppearance(settings);
+  }, [booting, settings]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === "Escape") setSelected(null);
       if (event.ctrlKey && event.key === "1") setView("discover");
@@ -131,8 +144,10 @@ export default function App(): JSX.Element {
   async function saveSettings(patch: Partial<Settings>): Promise<void> {
     const next = await window.api.setSettings(patch);
     setSettings(next);
-    setConfigured(Boolean(next.tmdbApiKey.trim()));
+    applyAppearance(next);
     setError("");
+    if (isAppearanceOnlyPatch(patch)) return;
+    setConfigured(Boolean(next.tmdbApiKey.trim()));
     await refresh();
   }
 
@@ -357,7 +372,7 @@ function NavBtn({
         "after:pointer-events-none after:absolute after:top-1/2 after:left-[calc(100%+10px)] after:z-5 after:-translate-y-1/2 after:rounded-lg after:border after:border-line after:bg-raised after:px-2.5 after:py-1.5 after:text-[11px] after:font-semibold after:tracking-normal after:text-ink after:whitespace-nowrap after:shadow-panel after:content-none hover:after:content-[attr(data-tip)] focus-visible:after:content-[attr(data-tip)]",
         view === id
           ? "bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent"
-          : "bg-transparent text-muted hover:bg-white/6 hover:text-ink",
+          : "bg-transparent text-muted hover:bg-wash-6 hover:text-ink",
       )}
       aria-label={label}
       data-tip={tip}

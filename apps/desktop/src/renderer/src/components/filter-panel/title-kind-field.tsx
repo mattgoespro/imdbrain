@@ -1,14 +1,14 @@
-import type { JSX } from 'react'
-import { TITLE_KIND_OPTIONS, type TitleKind } from '../../../../shared/types'
-import Select from '../select'
-import Field from './field'
+import type { JSX } from "react";
+import { TITLE_KIND_OPTIONS, type TitleKind } from "../../../../shared/types";
+import Select from "../select";
+import Field from "./field";
 
 export default function TitleKindField({
   value,
-  onChange
+  onChange,
 }: {
-  value: TitleKind
-  onChange: (titleKind: TitleKind) => void
+  value: TitleKind;
+  onChange: (titleKind: TitleKind) => void;
 }): JSX.Element {
   return (
     <Field label="Title type">
@@ -19,5 +19,5 @@ export default function TitleKindField({
         onChange={(titleKind) => onChange(titleKind as TitleKind)}
       />
     </Field>
-  )
+  );
 }

@@ -1,17 +1,17 @@
-import type { JSX } from 'react'
+import type { JSX } from "react";
 
 export default function ValueChips<T extends { id: number; name: string }>({
   values,
-  onRemove
+  onRemove,
 }: {
-  values: T[]
-  onRemove: (id: number) => void
+  values: T[];
+  onRemove: (id: number) => void;
 }): JSX.Element {
   return (
     <div className="mt-1.5 flex flex-wrap gap-1.5">
       {values.map((value) => (
         <span
-          className="inline-flex items-center gap-1.5 rounded-full bg-white/6 py-1 pr-2 pl-2.5 text-xs"
+          className="inline-flex items-center gap-1.5 rounded-full bg-wash-6 py-1 pr-2 pl-2.5 text-xs"
           key={value.id}
         >
           {value.name}
@@ -25,5 +25,5 @@ export default function ValueChips<T extends { id: number; name: string }>({
         </span>
       ))}
     </div>
-  )
+  );
 }

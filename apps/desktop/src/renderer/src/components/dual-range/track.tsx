@@ -1,11 +1,11 @@
-import type { JSX } from 'react'
+import type { JSX } from "react";
 
 export default function Track({
   fillLeft,
-  fillWidth
+  fillWidth,
 }: {
-  fillLeft: number
-  fillWidth: number
+  fillLeft: number;
+  fillWidth: number;
 }): JSX.Element {
   return (
     <>
@@ -15,5 +15,5 @@ export default function Track({
         style={{ left: `${fillLeft}%`, width: `${fillWidth}%` }}
       />
     </>
-  )
+  );
 }

@@ -2,17 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug API Server",
+      "name": "Attach API Server",
       "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/apps/api",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
-      "windows": {
-        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx.cmd"
-      },
-      "args": ["watch", "src/index.ts"],
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
       "presentation": {
         "hidden": true
       }
@@ -20,16 +14,11 @@
     {
       "name": "Debug Main Process",
       "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/apps/desktop",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite",
-      "windows": {
-        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron-vite.cmd"
-      },
-      "runtimeArgs": ["--sourcemap"],
-      "env": {
-        "REMOTE_DEBUGGING_PORT": "9222"
-      },
+      "request": "attach",
+      "port": 9230,
+      "restart": true,
+      "preLaunchTask": "Start IMDBrain debug services",
+      "postDebugTask": "Stop IMDBrain debug services",
       "presentation": {
         "hidden": true
       },
@@ -50,7 +39,7 @@
   "compounds": [
     {
       "name": "Debug IMDBrain",
-      "configurations": ["Debug API Server", "Debug Main Process", "Debug Renderer Process"],
+      "configurations": ["Debug Main Process", "Debug Renderer Process"],
       "stopAll": true,
       "presentation": {
         "hidden": false,

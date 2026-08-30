@@ -1,19 +1,15 @@
 @theme inline {
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 14%, transparent);
   --color-danger-bg: color-mix(in srgb, var(--color-danger) 12%, transparent);
-  --color-danger-border: color-mix(in srgb, var(--color-danger) 35%, transparent);
+  --color-danger-border: color-mix(
+    in srgb,
+    var(--color-danger) 35%,
+    transparent
+  );
   --color-danger-ring: color-mix(in srgb, var(--color-danger) 40%, transparent);
-  --color-white-03: rgb(255 255 255 / 0.03);
-  --color-white-05: rgb(255 255 255 / 0.05);
-  --color-white-06: rgb(255 255 255 / 0.06);
-  --color-white-09: rgb(255 255 255 / 0.09);
-  --shadow-accent-glow: 0 6px 16px color-mix(in srgb, var(--color-accent) 28%, transparent);
-}
-
-@utility bg-wash {
-  background: var(--color-white-05);
-}
-
-@utility bg-wash-hover {
-  background: var(--color-white-09);
+  --shadow-accent: 0 6px 16px
+    color-mix(in srgb, var(--color-accent) 28%, transparent);
+  --shadow-accent-glow: 0 6px 16px
+    color-mix(in srgb, var(--color-accent) 28%, transparent);
+  --shadow-panel: var(--imd-shadow-panel);
 }

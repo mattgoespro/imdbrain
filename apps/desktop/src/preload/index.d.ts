@@ -1,9 +1,9 @@
-import type { ImdbrainAPI } from './index'
+import type { ImdbrainAPI } from "./index";
 
 declare global {
   interface Window {
-    api: ImdbrainAPI
+    api: ImdbrainAPI;
   }
 }
 
-export {}
+export {};

@@ -1,0 +1,78 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start IMDb ratings API",
+      "type": "process",
+      "command": "node",
+      "args": ["--import", "tsx", "--inspect=9229", "src/index.ts"],
+      "options": {
+        "cwd": "${workspaceFolder}/apps/api"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "imdbrain-api",
+        "pattern": {
+          "regexp": "^([^\\\\s].*)\\\\((\\\\d+,\\\\d+)\\\\):\\\\s*(.*)$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Debugger listening"
+        }
+      }
+    },
+    {
+      "label": "Start IMDBrain desktop",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/node_modules/electron-vite/bin/electron-vite.js",
+        "--inspect=9230",
+        "--sourcemap"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/apps/desktop",
+        "env": {
+          "REMOTE_DEBUGGING_PORT": "9222"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "imdbrain-desktop",
+        "pattern": {
+          "regexp": "^([^\\\\s].*)\\\\((\\\\d+,\\\\d+)\\\\):\\\\s*(.*)$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "DevTools listening"
+        }
+      }
+    },
+    {
+      "label": "Start IMDBrain debug services",
+      "dependsOrder": "parallel",
+      "dependsOn": ["Start IMDb ratings API", "Start IMDBrain desktop"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop IMDBrain debug services",
+      "type": "process",
+      "command": "${env:WINDIR}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-Command",
+        "$ports = 9229, 9230, 9222, 3847; Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $ports -contains $_.LocalPort } | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { taskkill /PID $_ /T /F }"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

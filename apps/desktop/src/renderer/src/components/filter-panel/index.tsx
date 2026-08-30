@@ -1,17 +1,21 @@
-import type { JSX } from 'react'
-import type { DiscoverFilters, Genre, SearchHistoryEntry } from '../../../../shared/types'
-import { defaultFilters, mediaTypeOf } from '../../../../shared/types'
-import GenreChips from './genre-chips'
-import Header from './header'
-import LanguageField from './language-field'
-import QueryField from './query-field'
-import RatingSlider from './rating-slider'
-import RuntimeRange from './runtime-range'
-import SortField from './sort-field'
-import TitleKindField from './title-kind-field'
-import VisibilityToggles from './visibility-toggles'
-import VotesSlider from './votes-slider'
-import YearRange from './year-range'
+import type { JSX } from "react";
+import type {
+  DiscoverFilters,
+  Genre,
+  SearchHistoryEntry,
+} from "../../../../shared/types";
+import { defaultFilters, mediaTypeOf } from "../../../../shared/types";
+import GenreChips from "./genre-chips";
+import Header from "./header";
+import LanguageField from "./language-field";
+import QueryField from "./query-field";
+import RatingSlider from "./rating-slider";
+import RuntimeRange from "./runtime-range";
+import SortField from "./sort-field";
+import TitleKindField from "./title-kind-field";
+import VisibilityToggles from "./visibility-toggles";
+import VotesSlider from "./votes-slider";
+import YearRange from "./year-range";
 
 export default function FilterPanel({
   filters,
@@ -20,18 +24,18 @@ export default function FilterPanel({
   history,
   activeHistoryId,
   onApplyHistory,
-  onRemoveHistory
+  onRemoveHistory,
 }: {
-  filters: DiscoverFilters
-  setFilters: (filters: DiscoverFilters) => void
-  genres: Genre[]
-  history: SearchHistoryEntry[]
-  activeHistoryId: string | null
-  onApplyHistory: (entry: SearchHistoryEntry) => void
-  onRemoveHistory: (id: string) => void
+  filters: DiscoverFilters;
+  setFilters: (filters: DiscoverFilters) => void;
+  genres: Genre[];
+  history: SearchHistoryEntry[];
+  activeHistoryId: string | null;
+  onApplyHistory: (entry: SearchHistoryEntry) => void;
+  onRemoveHistory: (id: string) => void;
 }): JSX.Element {
   function patch(partial: Partial<DiscoverFilters>): void {
-    setFilters({ ...filters, ...partial, page: 1 })
+    setFilters({ ...filters, ...partial, page: 1 });
   }
 
   function toggleGenre(id: number): void {
@@ -39,8 +43,8 @@ export default function FilterPanel({
       genres: filters.genres.includes(id)
         ? filters.genres.filter((genreId) => genreId !== id)
         : [...filters.genres, id],
-      withoutGenres: []
-    })
+      withoutGenres: [],
+    });
   }
 
   return (
@@ -52,7 +56,10 @@ export default function FilterPanel({
         onApplyHistory={onApplyHistory}
         onRemoveHistory={onRemoveHistory}
       />
-      <QueryField value={filters.query} onChange={(query) => patch({ query })} />
+      <QueryField
+        value={filters.query}
+        onChange={(query) => patch({ query })}
+      />
       <TitleKindField
         value={filters.titleKind}
         onChange={(titleKind) =>
@@ -60,9 +67,9 @@ export default function FilterPanel({
             titleKind,
             genres: [],
             sortBy:
-              titleKind !== 'movie' && filters.sortBy === 'revenue.desc'
-                ? 'popularity.desc'
-                : filters.sortBy
+              titleKind !== "movie" && filters.sortBy === "revenue.desc"
+                ? "popularity.desc"
+                : filters.sortBy,
           })
         }
       />
@@ -71,7 +78,11 @@ export default function FilterPanel({
         value={filters.sortBy}
         onChange={(sortBy) => patch({ sortBy })}
       />
-      <GenreChips genres={genres} selected={filters.genres} onToggle={toggleGenre} />
+      <GenreChips
+        genres={genres}
+        selected={filters.genres}
+        onToggle={toggleGenre}
+      />
       <YearRange
         yearMin={filters.yearMin}
         yearMax={filters.yearMax}
@@ -86,7 +97,9 @@ export default function FilterPanel({
         onChange={(voteCountMin) => patch({ voteCountMin })}
       />
       <RuntimeRange
-        label={mediaTypeOf(filters.titleKind) === 'tv' ? 'Episode length' : 'Runtime'}
+        label={
+          mediaTypeOf(filters.titleKind) === "tv" ? "Episode length" : "Runtime"
+        }
         runtimeMin={filters.runtimeMin}
         runtimeMax={filters.runtimeMax}
         onChange={(runtimeMin, runtimeMax) => patch({ runtimeMin, runtimeMax })}
@@ -101,5 +114,5 @@ export default function FilterPanel({
         onChange={patch}
       />
     </aside>
-  )
+  );
 }

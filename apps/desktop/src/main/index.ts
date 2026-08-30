@@ -1,13 +1,23 @@
-import { app, shell, BrowserWindow } from 'electron'
-import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
-import { registerIpc } from './ipc'
-import { AppStore } from './store'
+import { app, shell, BrowserWindow } from "electron";
+import { join } from "path";
+import { electronApp, optimizer, is } from "@electron-toolkit/utils";
+import icon from "../../resources/icon.png?asset";
+import { registerIpc } from "./ipc";
+import { AppStore } from "./store";
+import { windowBackgroundColor } from "./window-chrome";
+import {
+  normalizeAccentColor,
+  normalizeThemeMode,
+  windowSymbolColor,
+} from "../shared/appearance";
 
-let mainWindow: BrowserWindow | null = null
+let mainWindow: BrowserWindow | null = null;
 
-function createWindow(): void {
+function createWindow(store: AppStore): void {
+  const settings = store.getSettings();
+  const themeMode = normalizeThemeMode(settings.themeMode);
+  const accentColor = normalizeAccentColor(settings.accentColor);
+  const backgroundColor = windowBackgroundColor(settings);
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -15,57 +25,57 @@ function createWindow(): void {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#0e0e10',
-    title: 'IMDBrain',
+    backgroundColor,
+    title: "IMDBrain",
     icon,
-    titleBarStyle: 'hidden',
+    titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: '#0e0e10',
-      symbolColor: '#ff7a3c',
-      height: 36
+      color: backgroundColor,
+      symbolColor: windowSymbolColor(accentColor, themeMode),
+      height: 36,
     },
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, "../preload/index.js"),
       sandbox: false,
-      contextIsolation: true
-    }
-  })
+      contextIsolation: true,
+    },
+  });
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
-  })
+  mainWindow.on("ready-to-show", () => {
+    mainWindow?.show();
+  });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
+    shell.openExternal(details.url);
+    return { action: "deny" };
+  });
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {
+    mainWindow.loadURL(process.env["ELECTRON_RENDERER_URL"]);
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.imdbrain.app')
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+  electronApp.setAppUserModelId("com.imdbrain.app");
+  app.on("browser-window-created", (_, window) => {
+    optimizer.watchWindowShortcuts(window);
+  });
 
-  const store = new AppStore()
-  registerIpc(store, () => mainWindow)
-  createWindow()
+  const store = new AppStore();
+  registerIpc(store, () => mainWindow);
+  createWindow(store);
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(store);
+  });
+});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});

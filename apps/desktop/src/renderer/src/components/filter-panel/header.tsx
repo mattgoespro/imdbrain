@@ -1,20 +1,20 @@
-import type { JSX } from 'react'
-import type { SearchHistoryEntry } from '../../../../shared/types'
-import { btn } from '../../lib/ui'
-import HistoryMenu from './history-menu'
+import type { JSX } from "react";
+import type { SearchHistoryEntry } from "../../../../shared/types";
+import { btn } from "../../lib/ui";
+import HistoryMenu from "./history-menu";
 
 export default function Header({
   onReset,
   history,
   activeHistoryId,
   onApplyHistory,
-  onRemoveHistory
+  onRemoveHistory,
 }: {
-  onReset: () => void
-  history: SearchHistoryEntry[]
-  activeHistoryId: string | null
-  onApplyHistory: (entry: SearchHistoryEntry) => void
-  onRemoveHistory: (id: string) => void
+  onReset: () => void;
+  history: SearchHistoryEntry[];
+  activeHistoryId: string | null;
+  onApplyHistory: (entry: SearchHistoryEntry) => void;
+  onRemoveHistory: (id: string) => void;
 }): JSX.Element {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -26,10 +26,14 @@ export default function Header({
           onApply={onApplyHistory}
           onRemove={onRemoveHistory}
         />
-        <button className={btn('ghost', 'compact')} type="button" onClick={onReset}>
+        <button
+          className={btn("ghost", "compact")}
+          type="button"
+          onClick={onReset}
+        >
           Reset
         </button>
       </div>
     </div>
-  )
+  );
 }

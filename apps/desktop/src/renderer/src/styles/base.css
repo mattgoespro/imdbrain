@@ -26,7 +26,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #3a3a42;
+    background: var(--imd-scrollbar);
     border-radius: 99px;
   }
 
@@ -34,11 +34,15 @@
     background: transparent;
   }
 
-  input[type='text'],
-  input[type='number'],
-  input[type='password'],
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
   textarea {
     @apply field-control;
+  }
+
+  input[type="color"] {
+    appearance: none;
   }
 
   input:focus,

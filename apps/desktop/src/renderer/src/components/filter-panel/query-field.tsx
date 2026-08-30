@@ -1,12 +1,12 @@
-import type { JSX } from 'react'
-import Field from './field'
+import type { JSX } from "react";
+import Field from "./field";
 
 export default function QueryField({
   value,
-  onChange
+  onChange,
 }: {
-  value: string
-  onChange: (query: string) => void
+  value: string;
+  onChange: (query: string) => void;
 }): JSX.Element {
   return (
     <Field label="Title or IMDb ID">
@@ -17,5 +17,5 @@ export default function QueryField({
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
-  )
+  );
 }

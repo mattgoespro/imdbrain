@@ -1,36 +1,38 @@
-import type { JSX } from 'react'
-import type { SearchHistoryEntry } from '../../../../shared/types'
+import type { JSX } from "react";
+import type { SearchHistoryEntry } from "../../../../shared/types";
 import {
   historyGenresLabel,
   historyRatingLabel,
+  historySortLabel,
   historyTitleKindLabel,
-  historyYearsLabel
-} from '../../../../shared/search-history'
-import { cn } from '../../lib/cn'
+  historyYearsLabel,
+} from "../../../../shared/search-history";
+import { cn } from "../../lib/cn";
 
 export default function HistoryOption({
   entry,
   active,
   onApply,
-  onRemove
+  onRemove,
 }: {
-  entry: SearchHistoryEntry
-  active: boolean
-  onApply: () => void
-  onRemove: () => void
+  entry: SearchHistoryEntry;
+  active: boolean;
+  onApply: () => void;
+  onRemove: () => void;
 }): JSX.Element {
   const rows = [
-    ['Title type', historyTitleKindLabel(entry.titleKind)],
-    ['Genres', historyGenresLabel(entry.genres)],
-    ['Years', historyYearsLabel(entry.yearMin, entry.yearMax)],
-    ['Min rating', historyRatingLabel(entry.ratingMin)]
-  ] as const
+    ["Title type", historyTitleKindLabel(entry.titleKind)],
+    ["Genres", historyGenresLabel(entry.genres)],
+    ["Years", historyYearsLabel(entry.yearMin, entry.yearMax)],
+    ["Min rating", historyRatingLabel(entry.ratingMin)],
+    ["Sort", historySortLabel(entry.sortBy)],
+  ] as const;
 
   return (
     <div
       className={cn(
-        'flex items-start gap-0.5 rounded-lg [&:not(:last-child)]:mb-0.5 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-line [&:not(:last-child)]:pb-0.5',
-        active ? 'bg-accent-soft' : 'bg-transparent hover:bg-white/6'
+        "flex items-start gap-0.5 rounded-lg [&:not(:last-child)]:mb-0.5 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-line [&:not(:last-child)]:pb-0.5",
+        active ? "bg-accent-soft" : "bg-transparent hover:bg-wash-6",
       )}
     >
       <button
@@ -41,13 +43,20 @@ export default function HistoryOption({
       >
         <dl className="m-0 flex flex-col gap-1">
           {rows.map(([label, value]) => (
-            <div key={label} className="grid grid-cols-[5.75rem_minmax(0,1fr)] gap-x-2.5">
-              <dt className="text-[11px] leading-[1.35] font-medium whitespace-nowrap text-faint">{label}</dt>
+            <div
+              key={label}
+              className="grid grid-cols-[5.75rem_minmax(0,1fr)] gap-x-2.5"
+            >
+              <dt className="text-[11px] leading-[1.35] font-medium whitespace-nowrap text-faint">
+                {label}
+              </dt>
               <dd
                 className={cn(
-                  'm-0 min-w-0 text-[12px] leading-[1.35] break-words',
-                  label === 'Title type' ? 'font-semibold text-ink' : 'text-ink',
-                  (label === 'Years' || label === 'Min rating') && 'tabular'
+                  "m-0 min-w-0 text-[12px] leading-[1.35] break-words",
+                  label === "Title type"
+                    ? "font-semibold text-ink"
+                    : "text-ink",
+                  (label === "Years" || label === "Min rating") && "tabular",
                 )}
               >
                 {value}
@@ -58,13 +67,13 @@ export default function HistoryOption({
       </button>
       <button
         type="button"
-        className="mt-1 mr-1 grid size-7 shrink-0 place-items-center rounded-md border-0 bg-transparent text-muted hover:bg-white/8 hover:text-danger"
+        className="mt-1 mr-1 grid size-7 shrink-0 place-items-center rounded-md border-0 bg-transparent text-muted hover:bg-wash-8 hover:text-danger"
         aria-label="Remove from search history"
         title="Remove"
         onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          onRemove()
+          event.preventDefault();
+          event.stopPropagation();
+          onRemove();
         }}
       >
         <svg
@@ -76,5 +85,5 @@ export default function HistoryOption({
         </svg>
       </button>
     </div>
-  )
+  );
 }

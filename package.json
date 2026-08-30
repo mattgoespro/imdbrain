@@ -11,10 +11,14 @@
     "dev:desktop": "npm run dev --workspace=imdbrain",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspace=imdbrain",
-    "build:win": "npm run build:win --workspace=imdbrain"
+    "build:win": "npm run build:win --workspace=imdbrain",
+    "sanity:ratings": "tsx scripts/sanity-check-ratings.ts",
+    "format:prettier": "prettier --write {apps,scripts}/**/*.{js,jsx,ts,tsx,json,css}"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "playwright": "^1.55.0",
+    "tsx": "^4.20.5"
   },
   "allowScripts": {
     "electron@39.2.6": true,

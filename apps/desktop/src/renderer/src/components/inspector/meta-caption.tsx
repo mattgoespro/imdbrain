@@ -1,13 +1,13 @@
-import type { JSX } from 'react'
+import type { JSX } from "react";
 
 export default function MetaCaption({
-  parts
+  parts,
 }: {
-  parts: Array<string | number | null | undefined>
+  parts: Array<string | number | null | undefined>;
 }): JSX.Element {
   return (
     <div className="mb-3.5 text-xs leading-[1.45] text-muted tabular">
-      {parts.filter(Boolean).join(' · ')}
+      {parts.filter(Boolean).join(" · ")}
     </div>
-  )
+  );
 }

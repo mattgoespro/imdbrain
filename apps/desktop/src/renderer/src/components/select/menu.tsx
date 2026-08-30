@@ -1,6 +1,6 @@
-import type { JSX, KeyboardEvent as ReactKeyboardEvent, Ref } from 'react'
-import type { SelectOption } from './types'
-import Option from './option'
+import type { JSX, KeyboardEvent as ReactKeyboardEvent, Ref } from "react";
+import type { SelectOption } from "./types";
+import Option from "./option";
 
 export default function Menu({
   menuRef,
@@ -12,18 +12,18 @@ export default function Menu({
   width,
   maxHeight,
   onKeyDown,
-  onChoose
+  onChoose,
 }: {
-  menuRef: Ref<HTMLDivElement>
-  id: string
-  options: ReadonlyArray<SelectOption>
-  value: string
-  top: number
-  left: number
-  width: number
-  maxHeight: number
-  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void
-  onChoose: (value: string) => void
+  menuRef: Ref<HTMLDivElement>;
+  id: string;
+  options: ReadonlyArray<SelectOption>;
+  value: string;
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  onChoose: (value: string) => void;
 }): JSX.Element {
   return (
     <div
@@ -44,5 +44,5 @@ export default function Menu({
         />
       ))}
     </div>
-  )
+  );
 }

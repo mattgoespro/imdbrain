@@ -4,24 +4,24 @@ import typography from "@tailwindcss/typography";
 import plugin from "tailwindcss/plugin";
 
 const palette = {
-  canvas: "#0e0e10",
-  ink: "#f5f5f7",
-  muted: "#9a9aa2",
-  faint: "#6c6c74",
-  line: "rgba(255, 255, 255, 0.08)",
-  accent: "#CEAA34",
-  accent2: "#FFD727",
-  accentSoft: "rgba(255, 122, 60, 0.14)",
-  accentInk: "#1a0c06",
-  danger: "#E25E5A",
-  dangerFg: "#f3c2ba",
-  raised: "#17171b",
-  rail: "#16161a",
-  track: "#2c2c32",
-  thumb: "#3f3f46",
-  thumbActive: "#8A5F1E",
-  input: "rgba(8, 8, 10, 0.55)",
-  poster: "#1c1c24",
+  canvas: "var(--imd-canvas)",
+  ink: "var(--imd-ink)",
+  muted: "var(--imd-muted)",
+  faint: "var(--imd-faint)",
+  line: "var(--imd-line)",
+  accent: "var(--imd-accent)",
+  accent2: "var(--imd-accent-2)",
+  accentSoft: "var(--imd-accent-soft)",
+  accentInk: "var(--imd-accent-ink)",
+  danger: "var(--imd-danger)",
+  dangerFg: "var(--imd-danger-fg)",
+  raised: "var(--imd-raised)",
+  rail: "var(--imd-rail)",
+  track: "var(--imd-track)",
+  thumb: "var(--imd-thumb)",
+  thumbActive: "var(--imd-thumb-active)",
+  input: "var(--imd-input)",
+  poster: "var(--imd-poster)",
 } as const;
 
 const imdbrain = plugin(({ addUtilities }) => {
@@ -77,6 +77,14 @@ export default {
         "thumb-active": palette.thumbActive,
         input: palette.input,
         poster: palette.poster,
+        wash: {
+          DEFAULT: "var(--imd-wash-05)",
+          3: "var(--imd-wash-03)",
+          5: "var(--imd-wash-05)",
+          6: "var(--imd-wash-06)",
+          8: "var(--imd-wash-08)",
+          9: "var(--imd-wash-09)",
+        },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
@@ -88,8 +96,8 @@ export default {
         app: "10px",
       },
       boxShadow: {
-        panel: "0 12px 32px rgba(0, 0, 0, 0.38)",
-        accent: "0 6px 16px rgba(255, 122, 60, 0.28)",
+        panel: "var(--imd-shadow-panel)",
+        accent: "0 6px 16px color-mix(in srgb, var(--imd-accent) 28%, transparent)",
       },
       letterSpacing: {
         title: "-0.04em",

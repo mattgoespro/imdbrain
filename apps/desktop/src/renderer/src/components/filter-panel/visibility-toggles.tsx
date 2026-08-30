@@ -1,13 +1,16 @@
-import type { JSX } from 'react'
+import type { JSX } from "react";
 
 export default function VisibilityToggles({
   hideWatched,
   hideWatchlist,
-  onChange
+  onChange,
 }: {
-  hideWatched: boolean
-  hideWatchlist: boolean
-  onChange: (partial: { hideWatched?: boolean; hideWatchlist?: boolean }) => void
+  hideWatched: boolean;
+  hideWatchlist: boolean;
+  onChange: (partial: {
+    hideWatched?: boolean;
+    hideWatchlist?: boolean;
+  }) => void;
 }): JSX.Element {
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -30,5 +33,5 @@ export default function VisibilityToggles({
         Hide watchlist
       </label>
     </div>
-  )
+  );
 }

@@ -1,13 +1,13 @@
-import type { JSX } from 'react'
-import { rangeInputClass } from '../../lib/ui'
-import Field from './field'
+import type { JSX } from "react";
+import { rangeInputClass } from "../../lib/ui";
+import Field from "./field";
 
 export default function VotesSlider({
   value,
-  onChange
+  onChange,
 }: {
-  value: number
-  onChange: (voteCountMin: number) => void
+  value: number;
+  onChange: (voteCountMin: number) => void;
 }): JSX.Element {
   return (
     <Field label={`Minimum votes ${value}`}>
@@ -23,5 +23,5 @@ export default function VotesSlider({
         />
       </div>
     </Field>
-  )
+  );
 }

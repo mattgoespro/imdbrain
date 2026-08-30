@@ -1,13 +1,13 @@
-import type { JSX } from 'react'
-import { rangeInputClass } from '../../lib/ui'
-import Field from './field'
+import type { JSX } from "react";
+import { rangeInputClass } from "../../lib/ui";
+import Field from "./field";
 
 export default function RatingSlider({
   value,
-  onChange
+  onChange,
 }: {
-  value: number
-  onChange: (ratingMin: number) => void
+  value: number;
+  onChange: (ratingMin: number) => void;
 }): JSX.Element {
   return (
     <Field label={`Minimum rating ${value.toFixed(1)}`}>
@@ -23,5 +23,5 @@ export default function RatingSlider({
         />
       </div>
     </Field>
-  )
+  );
 }

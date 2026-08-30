@@ -8,12 +8,21 @@
 
 @utility hero-ph-fallback {
   background:
-    radial-gradient(circle at 30% 20%, rgb(255 255 255 / 0.12), transparent 36%),
+    radial-gradient(
+      circle at 30% 20%,
+      rgb(255 255 255 / 0.12),
+      transparent 36%
+    ),
     linear-gradient(180deg, #6a6a74 0%, #2c2c34 52%, #121214 100%);
 }
 
 @utility hero-fade {
-  background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.55) 48%, color-mix(in srgb, var(--color-canvas) 98%, transparent));
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgb(0 0 0 / 0.55) 48%,
+    color-mix(in srgb, var(--color-canvas) 98%, transparent)
+  );
 }
 
 @utility inset-accent {

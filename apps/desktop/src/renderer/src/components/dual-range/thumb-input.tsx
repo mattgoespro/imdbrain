@@ -1,6 +1,6 @@
-import type { JSX } from 'react'
-import { cn } from '../../lib/cn'
-import { dualInput } from './styles'
+import type { JSX } from "react";
+import { cn } from "../../lib/cn";
+import { dualInput } from "./styles";
 
 export default function ThumbInput({
   min,
@@ -9,15 +9,15 @@ export default function ThumbInput({
   value,
   label,
   raised,
-  onChange
+  onChange,
 }: {
-  min: number
-  max: number
-  step: number
-  value: number
-  label: string
-  raised: boolean
-  onChange: (next: number) => void
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  label: string;
+  raised: boolean;
+  onChange: (next: number) => void;
 }): JSX.Element {
   return (
     <input
@@ -27,8 +27,8 @@ export default function ThumbInput({
       step={step}
       value={value}
       aria-label={label}
-      className={cn(dualInput, raised && 'z-2')}
+      className={cn(dualInput, raised && "z-2")}
       onChange={(e) => onChange(Number(e.target.value))}
     />
-  )
+  );
 }
