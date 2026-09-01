@@ -8,6 +8,9 @@ export interface HealthResponse {
   ready: boolean;
   syncedAt: string | null;
   titleCount: number;
+  ratingsCount: number;
+  catalogBuiltAt: string | null;
+  catalogRevision: string | null;
 }
 
 export interface RatingsResponse {

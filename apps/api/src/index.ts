@@ -1,13 +1,15 @@
-import { PORT, SYNC_INTERVAL_MS } from "./config.js";
+import { CATALOG_DB_PATH, PORT, SYNC_INTERVAL_MS } from "./config.js";
 import { createApp } from "./app.js";
 import { syncDataset } from "./services/dataset.js";
+import { CatalogDatabase } from "./services/catalog-db.js";
 import { RatingsStore } from "./services/ratings-store.js";
 
-const store = new RatingsStore();
-const app = createApp(store);
+const catalog = new CatalogDatabase(CATALOG_DB_PATH);
+const store = new RatingsStore(catalog);
+const app = createApp(store, catalog);
 
 app.listen(PORT, () => {
-  console.log(`IMDb ratings API listening on http://127.0.0.1:${PORT}`);
+  console.log(`IMDb catalog API listening on http://127.0.0.1:${PORT}`);
 });
 
 void syncDataset(store).then(

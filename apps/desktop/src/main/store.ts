@@ -42,7 +42,7 @@ export class AppStore {
       ) as Partial<PersistedState>;
       const library: Record<string, LibraryEntry> = {};
       for (const entry of Object.values(raw.library ?? {})) {
-        if (!entry?.tmdbId) continue;
+        if (!entry?.imdbId) continue;
         const normalized = normalizeEntry(entry);
         library[titleKey(normalized)] = normalized;
       }
@@ -79,10 +79,10 @@ export class AppStore {
   }
 
   getEntry(
-    tmdbId: number,
+    imdbId: string,
     mediaType: MediaType = "movie",
   ): LibraryEntry | undefined {
-    return this.state.library[titleKey({ tmdbId, mediaType })];
+    return this.state.library[titleKey({ imdbId, mediaType })];
   }
 
   upsertEntry(entry: LibraryEntry): LibraryEntry {
@@ -92,8 +92,8 @@ export class AppStore {
     return normalized;
   }
 
-  removeEntry(tmdbId: number, mediaType: MediaType = "movie"): void {
-    delete this.state.library[titleKey({ tmdbId, mediaType })];
+  removeEntry(imdbId: string, mediaType: MediaType = "movie"): void {
+    delete this.state.library[titleKey({ imdbId, mediaType })];
     this.save();
   }
 

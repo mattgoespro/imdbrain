@@ -16,10 +16,11 @@ const OverlayScroll = forwardRef<
   {
     className?: string;
     children: ReactNode;
+    id?: string;
     onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   }
 >(function OverlayScroll(
-  { className = "", children, onScroll },
+  { className = "", children, id, onScroll },
   ref,
 ): JSX.Element {
   const viewRef = useRef<HTMLDivElement | null>(null);
@@ -49,7 +50,18 @@ const OverlayScroll = forwardRef<
     const maxTop = Math.max(0, clientHeight - height);
     const range = scrollHeight - clientHeight;
     const top = range <= 0 || maxTop <= 0 ? 0 : (scrollTop / range) * maxTop;
-    setThumb({ top, height, show: overflow });
+    const next = {
+      top: Math.round(top),
+      height: Math.round(height),
+      show: overflow,
+    };
+    setThumb((prev) =>
+      prev.top === next.top &&
+      prev.height === next.height &&
+      prev.show === next.show
+        ? prev
+        : next,
+    );
   }, []);
 
   useEffect(() => {
@@ -58,8 +70,13 @@ const OverlayScroll = forwardRef<
     sync();
     const observer = new ResizeObserver(sync);
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [sync, children]);
+    const mutations = new MutationObserver(sync);
+    mutations.observe(el, { childList: true });
+    return () => {
+      observer.disconnect();
+      mutations.disconnect();
+    };
+  }, [sync]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -92,6 +109,7 @@ const OverlayScroll = forwardRef<
     <div className="relative min-h-0 flex-1 [--rail-gutter:14px]">
       <div
         ref={setRefs}
+        id={id}
         className={cn("scrollbar-none h-full overflow-auto", className)}
         onScroll={(event) => {
           sync();

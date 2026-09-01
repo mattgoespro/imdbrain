@@ -1,16 +1,16 @@
 # IMDBrain
 
-Windows desktop app for **advanced IMDb-linked movie search** and **personal ranking** based on what you rate, watch, skip, and binge.
+Windows desktop app for searching a self-hosted IMDb-linked catalog and ranking titles based on what you rate, watch, skip, and binge.
 
-Official IMDb search APIs are not publicly available. IMDBrain uses [TMDB](https://www.themoviedb.org/) as the catalog (titles include IMDb IDs), opens films on IMDb, and can import your IMDb `ratings.csv`.
+IMDBrain serves catalog search, title details, and current IMDb ratings through its local Express API. Import a licensed metadata bundle into the API’s SQLite database; the desktop app makes no TMDB requests.
 
-A local Express API in `apps/api` overlays **current IMDb ratings and vote counts** from IMDb’s official daily [non-commercial `title.ratings` dataset](https://developer.imdb.com/non-commercial-datasets/) so Discover sort and match scores are not stuck on stale TMDB votes.
+The API refreshes **current IMDb ratings and vote counts** from IMDb’s official daily [non-commercial datasets](https://developer.imdb.com/non-commercial-datasets/). `npm run build:catalog` loads movies, TV series, and mini-series (plus directors, top billed cast, genres, year, runtime, and ratings) into SQLite. A licensed metadata bundle can still overlay posters and synopses later.
 
 ## Features
 
 - **Advanced search** — title or `tt` IMDb ID, include/exclude genres, year window, rating and vote floors, runtime, language, cast, director, keywords, streaming services, hide watched/watchlist
 - **Best match sort** — re-ranks search results against your taste model
-- **Live IMDb ratings** — patches TMDB list scores with the daily IMDb ratings dump before ranking
+- **Live IMDb ratings** — the catalog API merges the daily IMDb ratings dump before it returns a page
 - **Ranked for you** — recommendations seeded from highly rated movies, then scored with genre affinity, directors, cast, era, runtime habits, and recent watch streaks
 - **Watch patterns** — local library of watched / watchlist / skipped titles with ratings
 - **IMDb import** — load IMDb’s ratings export to train the ranker immediately
@@ -19,19 +19,24 @@ A local Express API in `apps/api` overlays **current IMDb ratings and vote count
 ## Run on Windows
 
 1. Install Node.js 20+.
-2. Create a free TMDB API key: [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
-3. From this folder:
+2. From this folder:
 
 ```bash
 npm install
 npm run dev
 ```
 
-That starts the ratings API (`http://127.0.0.1:3847`) and the Electron app. The API downloads `title.ratings.tsv.gz` on first run (IMDb non-commercial use). If the API is offline, the desktop app keeps using TMDB scores.
+That starts the catalog API (`http://127.0.0.1:3847`) and the Electron app. Before searching, build the local catalog (IMDb non-commercial use, several hundred MB of downloads):
 
-4. In **Settings**, paste the TMDB API key and save. The ratings API URL defaults to `http://127.0.0.1:3847`.
-5. Rate a few movies you already know (or import `ratings.csv` from IMDb).
-6. Open **Ranked for you**.
+```bash
+npm run build:catalog
+```
+
+Pass `--force` to re-download the dumps. The first run can take several minutes. Optional licensed overlays are documented in [`apps/api/README.md`](apps/api/README.md).
+
+3. In **Settings**, confirm the catalog API URL (default `http://127.0.0.1:3847`).
+4. Rate a few movies you already know (or import `ratings.csv` from IMDb).
+5. Open **Ranked for you**.
 
 Individual processes:
 
@@ -61,8 +66,8 @@ Each candidate title gets a 1–99 match score from:
 | Runtime | How close the film is to the lengths you actually finish |
 | Watch pattern | Recent genre streaks, plus skipped-genre penalties |
 
-Highly rated titles seed TMDB recommendations and similar films; the ranker then sorts the merged pool and explains why a title scored well.
+The ranker scores titles from the local catalog and explains why a title scored well.
 
 ## Data
 
-Library and settings stay on this PC in Electron’s user data folder (`imdbrain.json`). The TMDB key never leaves the machine except to call TMDB. The ratings API keeps `title.ratings.tsv.gz` under `apps/api/data/` and serves lookups only on localhost.
+Settings stay on this PC in Electron’s user data folder (`imdbrain.json`). Catalog metadata and library state live in the API SQLite database; the API keeps `title.ratings.tsv.gz` and `catalog.sqlite` under `apps/api/data/` by default and serves localhost clients only.

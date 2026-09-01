@@ -22,23 +22,23 @@ const api = {
   getSettings: (): Promise<Settings> => ipcRenderer.invoke("settings:get"),
   setSettings: (patch: Partial<Settings>): Promise<Settings> =>
     ipcRenderer.invoke("settings:set", patch),
-  configured: (): Promise<boolean> => ipcRenderer.invoke("tmdb:configured"),
+  configured: (): Promise<boolean> => ipcRenderer.invoke("catalog:configured"),
   genres: (mediaType?: MediaType): Promise<Genre[]> =>
-    ipcRenderer.invoke("tmdb:genres", mediaType),
+    ipcRenderer.invoke("catalog:genres", mediaType),
   providers: (): Promise<WatchProvider[]> =>
-    ipcRenderer.invoke("tmdb:providers"),
+    ipcRenderer.invoke("catalog:providers"),
   searchPeople: (query: string): Promise<PersonRef[]> =>
-    ipcRenderer.invoke("tmdb:searchPeople", query),
+    ipcRenderer.invoke("catalog:searchPeople", query),
   searchKeywords: (query: string): Promise<KeywordRef[]> =>
-    ipcRenderer.invoke("tmdb:searchKeywords", query),
+    ipcRenderer.invoke("catalog:searchKeywords", query),
   discover: (filters: DiscoverFilters): Promise<PagedMovies> =>
-    ipcRenderer.invoke("tmdb:discover", filters),
-  movie: (id: number, mediaType?: MediaType): Promise<MovieDetails> =>
-    ipcRenderer.invoke("tmdb:movie", id, mediaType),
+    ipcRenderer.invoke("catalog:discover", filters),
+  movie: (id: string, _mediaType?: MediaType): Promise<MovieDetails> =>
+    ipcRenderer.invoke("catalog:title", id),
   movieMeta: (
     movies: MovieSummary[],
   ): Promise<Record<string, MovieEnrichment>> =>
-    ipcRenderer.invoke("tmdb:movieMeta", movies),
+    ipcRenderer.invoke("catalog:movieMeta", movies),
   listLibrary: (): Promise<LibraryEntry[]> =>
     ipcRenderer.invoke("library:list"),
   upsertLibrary: (payload: {
@@ -47,10 +47,10 @@ const api = {
     rating?: number;
   }): Promise<LibraryEntry[]> => ipcRenderer.invoke("library:upsert", payload),
   removeLibrary: (
-    tmdbId: number,
-    mediaType?: MediaType,
+    imdbId: string,
+    _mediaType?: MediaType,
   ): Promise<LibraryEntry[]> =>
-    ipcRenderer.invoke("library:remove", tmdbId, mediaType),
+    ipcRenderer.invoke("library:remove", imdbId),
   clearLibrary: (): Promise<LibraryEntry[]> =>
     ipcRenderer.invoke("library:clear"),
   exportLibrary: (): Promise<{ ok: boolean; path?: string }> =>

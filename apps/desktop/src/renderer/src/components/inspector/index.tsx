@@ -45,7 +45,7 @@ export default function Inspector({
     status: WatchStatus,
     rating?: number,
   ) => Promise<void>;
-  onRemove: (tmdbId: number, mediaType: MediaType) => Promise<void>;
+  onRemove: (imdbId: string, mediaType: MediaType) => Promise<void>;
 }): JSX.Element {
   if (!movie) {
     return (
@@ -56,7 +56,7 @@ export default function Inspector({
   }
 
   const data =
-    details?.tmdbId === movie.tmdbId &&
+    details?.imdbId === movie.imdbId &&
     (details.mediaType ?? "movie") === (movie.mediaType ?? "movie")
       ? details
       : movie;
@@ -80,7 +80,7 @@ export default function Inspector({
         <HeroPoster key={data.posterPath ?? "none"} path={data.posterPath} />
         <div className="hero-fade pointer-events-none absolute inset-x-0 bottom-0 h-[72px]" />
       </div>
-      <div className="animate-fade px-4 pt-4 pb-[18px]" key={movie.tmdbId}>
+      <div className="animate-fade px-4 pt-4 pb-[18px]" key={movie.imdbId}>
         <Heading
           title={data.title}
           rating={details?.certification ?? data.certification}

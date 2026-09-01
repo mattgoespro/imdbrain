@@ -1,24 +1,9 @@
-import {
-  createReadStream,
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  statSync,
-} from "node:fs";
-import { rename, unlink } from "node:fs/promises";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { createInterface } from "node:readline";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { createGunzip } from "node:zlib";
-import {
-  DATA_DIR,
-  DATASET_FILE,
-  DATASET_URL,
-  SYNC_INTERVAL_MS,
-} from "../config.js";
+import { DATA_DIR, DATASET_FILE, DATASET_URL } from "../config.js";
 import type { ImdbRating } from "../types.js";
 import type { RatingsStore } from "./ratings-store.js";
+import { ensureGzipFile, imdbValue, isStale, readTsvRows } from "./gzip-tsv.js";
 
 const IMDB_ID = /^tt\d+$/i;
 
@@ -51,7 +36,7 @@ async function ensureDataset(
   if (!force && present && !isStale(file) && store.ready()) return;
 
   try {
-    await downloadDataset(file);
+    await ensureGzipFile(DATASET_URL, file, true);
     await loadFromFile(store, file);
   } catch (error) {
     if (store.ready()) {
@@ -61,33 +46,6 @@ async function ensureDataset(
       );
       return;
     }
-    throw error;
-  }
-}
-
-function isStale(file: string): boolean {
-  return Date.now() - statSync(file).mtimeMs >= SYNC_INTERVAL_MS;
-}
-
-async function downloadDataset(file: string): Promise<void> {
-  const response = await fetch(DATASET_URL, {
-    headers: { Accept: "application/gzip" },
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to download IMDb ratings (${response.status})`);
-  }
-
-  const tmp = `${file}.${process.pid}.tmp`;
-  try {
-    await pipeline(
-      Readable.fromWeb(
-        response.body as import("node:stream/web").ReadableStream,
-      ),
-      createWriteStream(tmp),
-    );
-    await rename(tmp, file);
-  } catch (error) {
-    if (existsSync(tmp)) await unlink(tmp).catch(() => undefined);
     throw error;
   }
 }
@@ -102,25 +60,13 @@ export async function parseRatingsTsv(
   file: string,
 ): Promise<Map<string, ImdbRating>> {
   const ratings = new Map<string, ImdbRating>();
-  const lines = createInterface({
-    input: createReadStream(file).pipe(createGunzip()),
-    crlfDelay: Infinity,
-  });
-
-  let header = true;
-  for await (const line of lines) {
-    if (header) {
-      header = false;
-      continue;
-    }
-    if (!line) continue;
-    const [tconst, averageRating, numVotes] = line.split("\t");
-    if (!tconst || !IMDB_ID.test(tconst)) continue;
+  for await (const [tconst, averageRating, numVotes] of readTsvRows(file)) {
+    const id = imdbValue(tconst)?.toLowerCase();
+    if (!id || !IMDB_ID.test(id)) continue;
     const rating = Number(averageRating);
     const votes = Number(numVotes);
     if (!Number.isFinite(rating) || !Number.isFinite(votes)) continue;
-    ratings.set(tconst.toLowerCase(), { rating, votes });
+    ratings.set(id, { rating, votes });
   }
-
   return ratings;
 }

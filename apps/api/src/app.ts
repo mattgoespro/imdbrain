@@ -3,12 +3,14 @@ import express from "express";
 import { errorHandler } from "./middleware/error.js";
 import { healthRouter } from "./routes/health.js";
 import { ratingsRouter } from "./routes/ratings.js";
+import { v1Router } from "./routes/v1.js";
 import { syncDataset } from "./services/dataset.js";
+import type { CatalogDatabase } from "./services/catalog-db.js";
 import type { RatingsStore } from "./services/ratings-store.js";
 
 const localhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
 
-export function createApp(store: RatingsStore): express.Express {
+export function createApp(store: RatingsStore, catalog: CatalogDatabase): express.Express {
   const app = express();
 
   app.use(
@@ -22,10 +24,11 @@ export function createApp(store: RatingsStore): express.Express {
       },
     }),
   );
-  app.use(express.json({ limit: "100kb" }));
+  app.use(express.json({ limit: "15mb" }));
 
-  app.use("/health", healthRouter(store));
+  app.use("/health", healthRouter(store, catalog));
   app.use("/ratings", ratingsRouter(store));
+  app.use("/v1", v1Router(catalog, store));
   app.post("/sync", async (_req, res, next) => {
     try {
       await syncDataset(store, true);

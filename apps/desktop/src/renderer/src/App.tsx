@@ -127,7 +127,7 @@ export default function App(): JSX.Element {
     }
     let cancelled = false;
     window.api
-      .movie(selected.tmdbId, selected.mediaType)
+      .movie(selected.imdbId, selected.mediaType)
       .then((movie) => {
         detailsCache.current.set(key, movie);
         if (!cancelled) setDetails(movie);
@@ -147,7 +147,7 @@ export default function App(): JSX.Element {
     applyAppearance(next);
     setError("");
     if (isAppearanceOnlyPatch(patch)) return;
-    setConfigured(Boolean(next.tmdbApiKey.trim()));
+    setConfigured(Boolean(next.catalogApiUrl.trim()));
     await refresh();
   }
 
@@ -184,7 +184,7 @@ export default function App(): JSX.Element {
         setLibrary(await window.api.removeLibrary(id, mediaType));
         if (
           selected &&
-          titleKey(selected) === titleKey({ tmdbId: id, mediaType })
+          titleKey(selected) === titleKey({ imdbId: id, mediaType })
         )
           setSelected(null);
       }}
@@ -273,26 +273,16 @@ export default function App(): JSX.Element {
           ) : showWelcome ? (
             <section className="mx-auto my-[8vh] max-w-160 px-0 py-2">
               <h2 className="mt-0 mb-2.5 text-[32px] tracking-title">
-                Start with a TMDB key.
+                Connect your local catalog.
               </h2>
               <p className="leading-[1.55] text-muted">
-                IMDBrain searches the IMDb-linked movie catalog through TMDB,
-                then ranks titles against your ratings, skips, and watch
-                history. The official IMDb API is not publicly available, so
-                this app uses TMDB metadata plus IMDb IDs, IMDb page links, and
-                optional IMDb ratings import.
+                IMDBrain uses your local catalog API, then ranks titles against
+                ratings, skips, and watch history. Catalog titles use IMDb IDs
+                as their canonical identity.
               </p>
               <p className="leading-[1.55] text-muted">
-                Create a free key at{" "}
-                <a
-                  className="text-accent"
-                  href="https://www.themoviedb.org/settings/api"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  themoviedb.org/settings/api
-                </a>
-                , then paste it in Settings.
+                Build the catalog with `npm run build:catalog`, start the API,
+                then confirm its URL in Settings.
               </p>
               <button
                 className={btn("primary")}

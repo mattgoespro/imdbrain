@@ -34,10 +34,10 @@ export interface WatchProvider {
 }
 
 export interface MovieSummary {
-  tmdbId: number;
+  /** Canonical catalog identity. */
+  imdbId: string;
   mediaType: MediaType;
   titleKind: TitleKind;
-  imdbId?: string;
   title: string;
   originalTitle?: string;
   overview: string;
@@ -70,7 +70,6 @@ export interface CastMember {
 }
 
 export interface MovieDetails extends MovieSummary {
-  imdbId?: string;
   runtime?: number;
   tagline?: string;
   status?: string;
@@ -84,10 +83,9 @@ export interface MovieDetails extends MovieSummary {
 }
 
 export interface LibraryEntry {
-  tmdbId: number;
+  imdbId: string;
   mediaType: MediaType;
   titleKind: TitleKind;
-  imdbId?: string;
   title: string;
   overview?: string;
   posterPath?: string | null;
@@ -248,7 +246,7 @@ export interface TasteProfile {
 }
 
 export interface Settings {
-  tmdbApiKey: string;
+  catalogApiUrl: string;
   region: string;
   rankingMode: RankingMode;
   imdbApiUrl: string;
@@ -334,14 +332,16 @@ export function defaultFilters(): DiscoverFilters {
   };
 }
 
-export const DEFAULT_IMDB_API_URL = "http://127.0.0.1:3847";
+export const DEFAULT_CATALOG_API_URL = "http://127.0.0.1:3847";
+/** @deprecated Use DEFAULT_CATALOG_API_URL. */
+export const DEFAULT_IMDB_API_URL = DEFAULT_CATALOG_API_URL;
 
 export function defaultSettings(): Settings {
   return {
-    tmdbApiKey: "",
+    catalogApiUrl: DEFAULT_CATALOG_API_URL,
     region: "US",
     rankingMode: "balanced",
-    imdbApiUrl: DEFAULT_IMDB_API_URL,
+    imdbApiUrl: DEFAULT_CATALOG_API_URL,
     themeMode: "dark",
     accentColor: DEFAULT_ACCENT_COLOR,
   };
@@ -361,7 +361,13 @@ export function posterUrl(
   size = "w342",
 ): string | null {
   if (!path) return null;
-  return `https://image.tmdb.org/t/p/${size}${path}`;
+  const tmdb = path.match(
+    /^https:\/\/image\.tmdb\.org\/t\/p\/[^/]+(\/.+)$/,
+  );
+  if (tmdb) return `https://image.tmdb.org/t/p/${size}${tmdb[1]}`;
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("/")) return `https://image.tmdb.org/t/p/${size}${path}`;
+  return path;
 }
 
 export function imdbUrl(imdbId?: string): string | null {
@@ -374,10 +380,10 @@ export function mediaTypeOf(kind?: TitleKind | MediaType): MediaType {
 }
 
 export function titleKey(title: {
-  tmdbId: number;
+  imdbId: string;
   mediaType?: MediaType;
 }): string {
-  return `${title.mediaType ?? "movie"}:${title.tmdbId}`;
+  return title.imdbId.toLowerCase();
 }
 
 export function titleKindLabel(kind?: TitleKind): string {
@@ -424,7 +430,7 @@ function movieComparator(
     ) => number)
   | null {
   const byId = (a: MovieSummary, b: MovieSummary): number =>
-    titleKey(a).localeCompare(titleKey(b)) || a.tmdbId - b.tmdbId;
+    titleKey(a).localeCompare(titleKey(b));
   switch (sortBy) {
     case "match":
       return (a, b) =>

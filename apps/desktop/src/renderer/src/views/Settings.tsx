@@ -33,7 +33,7 @@ export default function SettingsView({
   onLibraryChange: (library: LibraryEntry[]) => void;
   onError: (message: string) => void;
 }): JSX.Element {
-  const [apiKey, setApiKey] = useState(settings.tmdbApiKey);
+  const [catalogApiUrl, setCatalogApiUrl] = useState(settings.catalogApiUrl);
   const [region, setRegion] = useState(settings.region);
   const [mode, setMode] = useState<RankingMode>(settings.rankingMode);
   const [imdbApiUrl, setImdbApiUrl] = useState(settings.imdbApiUrl);
@@ -44,7 +44,7 @@ export default function SettingsView({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setApiKey(settings.tmdbApiKey);
+    setCatalogApiUrl(settings.catalogApiUrl);
     setRegion(settings.region);
     setMode(settings.rankingMode);
     setImdbApiUrl(settings.imdbApiUrl);
@@ -69,7 +69,7 @@ export default function SettingsView({
   async function save(): Promise<void> {
     onError("");
     await onSave({
-      tmdbApiKey: apiKey.trim(),
+      catalogApiUrl: catalogApiUrl.trim(),
       region,
       rankingMode: mode,
       imdbApiUrl: imdbApiUrl.trim(),
@@ -173,25 +173,17 @@ export default function SettingsView({
         <div className="min-w-0 border border-t-0 border-line p-[18px]">
           <h3 className="kicker">Catalog access</h3>
           <label className="mb-1 flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted">
-            TMDB API key
+            Catalog API URL
             <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Paste key from themoviedb.org"
+              type="url"
+              value={catalogApiUrl}
+              onChange={(e) => setCatalogApiUrl(e.target.value)}
+              placeholder="http://127.0.0.1:3847"
             />
           </label>
           <p className="text-xs leading-[1.45] text-muted tabular">
-            Free at{" "}
-            <a
-              className="text-accent"
-              href="https://www.themoviedb.org/settings/api"
-              target="_blank"
-              rel="noreferrer"
-            >
-              themoviedb.org/settings/api
-            </a>
-            . IMDBrain stores it only on this PC.
+            The local Express catalog service in this repository. Its default
+            address is http://127.0.0.1:3847.
           </p>
           <label className="mb-1 flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted">
             IMDb ratings API
@@ -203,8 +195,7 @@ export default function SettingsView({
             />
           </label>
           <p className="text-xs leading-[1.45] text-muted tabular">
-            Local ratings service from this repo (`npm run dev:api`). Discover
-            falls back to TMDB scores if it is offline.
+            Used for local rating lookups. It normally matches the catalog URL.
           </p>
           <label className="mb-1 flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted">
             Region

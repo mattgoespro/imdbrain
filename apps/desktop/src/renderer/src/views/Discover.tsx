@@ -7,13 +7,14 @@ import {
   type ReactNode,
   type UIEvent,
 } from "react";
+import InfiniteScroll from "react-infinite-scroll-component";
 import type {
   DiscoverFilters,
   Genre,
   MovieSummary,
   RankedMovie,
 } from "../../../shared/types";
-import { sortMovies, titleKey } from "../../../shared/types";
+import { titleKey } from "../../../shared/types";
 import {
   applySearchHistory,
   isDefaultSearchHistory,
@@ -37,6 +38,7 @@ const SEARCH_DEBOUNCE_MS = 400;
 const HISTORY_SCROLL_PX = 400;
 const HISTORY_SCROLL_VIEWPORT = 0.65;
 const HISTORY_OPEN_COUNT = 2;
+const SCROLLABLE_TARGET_ID = "discover-results-scroll";
 
 export default function Discover({
   filters,
@@ -60,31 +62,30 @@ export default function Discover({
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [entering, setEntering] = useState(false);
   const [layout, setLayout] = useState<"list" | "grid">("list");
   const [gridCols, setGridCols] = useState(1);
   const [history, setHistory] = useState(listSearchHistory);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
   const filtersRef = useRef(filters);
   const genresRef = useRef(genres);
+  const pageRef = useRef(1);
+  const totalPagesRef = useRef(1);
+  const loadingRef = useRef(true);
   const loadingMoreRef = useRef(false);
   const historySession = useRef({ saved: false, opens: 0 });
   filtersRef.current = filters;
   genresRef.current = genres;
+  pageRef.current = page;
+  totalPagesRef.current = totalPages;
+  loadingRef.current = loading;
 
   const filterKey = useMemo(
     () =>
       JSON.stringify({
         ...filters,
         page: 1,
-        withoutGenres: [],
-        cast: [],
-        directors: [],
-        keywords: [],
-        providers: [],
       }),
     [filters],
   );
@@ -105,14 +106,11 @@ export default function Discover({
   async function load(nextPage: number, replace: boolean): Promise<void> {
     if (!replace && loadingMoreRef.current) return;
     const id = ++requestId.current;
-    const sortBy = filtersRef.current.sortBy;
     if (replace) {
       loadingMoreRef.current = false;
       setLoading(true);
-      setLoadingMore(false);
     } else {
       loadingMoreRef.current = true;
-      setLoadingMore(true);
     }
     onError("");
     try {
@@ -121,21 +119,18 @@ export default function Discover({
         page: nextPage,
       });
       if (id !== requestId.current) return;
+      pageRef.current = data.page;
+      totalPagesRef.current = Math.max(1, data.totalPages);
       setPage(data.page);
-      setTotalPages(Math.max(1, data.totalPages));
+      setTotalPages(totalPagesRef.current);
       setTotalResults(data.totalResults);
       setItems((prev) => {
-        const incoming = data.results;
-        if (replace) return sortMovies(incoming, sortBy);
-        const seen = new Set(prev.map((movie) => movie.tmdbId));
-        return sortMovies(
-          [...prev, ...incoming.filter((movie) => !seen.has(movie.tmdbId))],
-          sortBy,
-        );
+        if (replace) return data.results;
+        return [...prev, ...data.results];
       });
       if (replace) {
         scrollerRef.current?.scrollTo({ top: 0 });
-        const first = sortMovies(data.results, sortBy)[0];
+        const first = data.results[0];
         if (first) onOpen(first);
         setEntering(true);
       }
@@ -146,9 +141,21 @@ export default function Discover({
       if (id === requestId.current) {
         loadingMoreRef.current = false;
         setLoading(false);
-        setLoadingMore(false);
       }
     }
+  }
+
+  function canLoadMore(): boolean {
+    return (
+      !loadingRef.current &&
+      !loadingMoreRef.current &&
+      pageRef.current < totalPagesRef.current
+    );
+  }
+
+  function loadMore(): void {
+    if (!canLoadMore()) return;
+    void load(pageRef.current + 1, false);
   }
 
   function onResultsScroll(event: UIEvent<HTMLDivElement>): void {
@@ -192,6 +199,8 @@ export default function Discover({
     return () => window.clearTimeout(handle);
   }, [entering]);
 
+  const hasResults = items.length > 0;
+
   useEffect(() => {
     if (layout !== "grid") {
       setGridCols(1);
@@ -206,28 +215,8 @@ export default function Discover({
     return () => observer.disconnect();
   }, [layout, items.length, entering]);
 
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    const root = scrollerRef.current;
-    if (!sentinel || !root) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0]?.isIntersecting) return;
-        if (loading || loadingMoreRef.current || page >= totalPages) return;
-        void load(page + 1, false);
-      },
-      { root, rootMargin: "280px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [page, totalPages, loading, loadingMore, items.length]);
-
-  const refreshing = loading && items.length > 0;
+  const refreshing = loading && hasResults;
   const countLabel = titleCount(totalResults, loading && !items.length);
-  const sortedItems = useMemo(
-    () => sortMovies(items, filters.sortBy),
-    [items, filters.sortBy],
-  );
   const activeHistoryId =
     history.find((entry) => matchesSearchHistory(filters, entry))?.id ?? null;
 
@@ -292,13 +281,9 @@ export default function Discover({
         <div className="relative flex min-h-0 flex-1 flex-col">
           <OverlayScroll
             ref={scrollerRef}
+            id={SCROLLABLE_TARGET_ID}
             onScroll={onResultsScroll}
-            className={cn(
-              layout === "grid"
-                ? "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] content-start gap-x-3.5 gap-y-4.5 pr-[var(--rail-gutter,14px)]"
-                : "flex flex-col",
-              refreshing && "opacity-45",
-            )}
+            className={cn(refreshing && "opacity-45")}
           >
             {loading && !items.length ? (
               <CatalogLoader label="Searching the catalog…" />
@@ -311,26 +296,47 @@ export default function Discover({
                 <p>Loosen the vote floor or year window to see more films.</p>
               </div>
             ) : null}
-            {sortedItems.map((movie, index) => (
-              <MovieCard
-                key={titleKey(movie)}
-                movie={movie}
-                active={selectedId === titleKey(movie)}
-                layout={layout}
-                entering={entering}
-                enterDelay={enterDelayMs(
-                  index,
-                  layout === "grid" ? gridCols : 1,
-                  layout === "grid" ? 36 : 18,
-                )}
-                onOpen={handleCardOpen}
-              />
-            ))}
-            <div ref={sentinelRef} className="col-span-full h-px" />
-            {loadingMore ? (
-              <div className="col-span-full my-4 mb-2 flex items-center justify-center gap-2.5 text-xs text-muted">
-                Loading more titles…
-              </div>
+            {hasResults ? (
+              <InfiniteScroll
+                dataLength={items.length}
+                next={loadMore}
+                hasMore={canLoadMore()}
+                loader={
+                  <div className="my-4 mb-2 flex items-center justify-center gap-2.5 text-xs text-muted">
+                    Loading more titles…
+                  </div>
+                }
+                endMessage={
+                  <p className="my-5 text-center text-xs text-muted">
+                    You have reached the end of these results.
+                  </p>
+                }
+                scrollableTarget={SCROLLABLE_TARGET_ID}
+              >
+                <div
+                  className={cn(
+                    layout === "grid"
+                      ? "grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] content-start gap-x-3.5 gap-y-4.5 pr-[var(--rail-gutter,14px)]"
+                      : "flex flex-col",
+                  )}
+                >
+                  {items.map((movie, index) => (
+                    <MovieCard
+                      key={titleKey(movie)}
+                      movie={movie}
+                      active={selectedId === titleKey(movie)}
+                      layout={layout}
+                      entering={entering}
+                      enterDelay={enterDelayMs(
+                        index,
+                        layout === "grid" ? gridCols : 1,
+                        layout === "grid" ? 36 : 18,
+                      )}
+                      onOpen={handleCardOpen}
+                    />
+                  ))}
+                </div>
+              </InfiniteScroll>
             ) : null}
           </OverlayScroll>
           {refreshing ? (

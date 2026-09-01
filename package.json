@@ -13,6 +13,8 @@
     "build": "npm run build --workspace=imdbrain",
     "build:win": "npm run build:win --workspace=imdbrain",
     "sanity:ratings": "tsx scripts/sanity-check-ratings.ts",
+    "build:catalog": "npm run build:catalog --workspace=@imdbrain/api",
+    "enrich:posters": "npm run enrich:posters --workspace=@imdbrain/api",
     "format:prettier": "prettier --write {apps,scripts}/**/*.{js,jsx,ts,tsx,json,css}"
   },
   "devDependencies": {

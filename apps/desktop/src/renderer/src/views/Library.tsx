@@ -100,7 +100,6 @@ export default function Library({
               key={titleKey(entry)}
               onClick={() =>
                 onOpen({
-                  tmdbId: entry.tmdbId,
                   mediaType: entry.mediaType ?? "movie",
                   titleKind:
                     entry.titleKind ??
@@ -160,7 +159,7 @@ export default function Library({
                   event.stopPropagation();
                   onChange(
                     await window.api.removeLibrary(
-                      entry.tmdbId,
+                      entry.imdbId,
                       entry.mediaType,
                     ),
                   );

@@ -22,7 +22,7 @@ export default function Actions({
     status: WatchStatus,
     rating?: number,
   ) => Promise<void>;
-  onRemove: (tmdbId: number, mediaType: MediaType) => Promise<void>;
+  onRemove: (imdbId: string, mediaType: MediaType) => Promise<void>;
 }): JSX.Element {
   return (
     <div className="mb-3 flex flex-wrap gap-2">
@@ -51,7 +51,7 @@ export default function Actions({
         <button
           className={btn("danger")}
           type="button"
-          onClick={() => onRemove(movie.tmdbId, movie.mediaType ?? "movie")}
+          onClick={() => onRemove(movie.imdbId, movie.mediaType ?? "movie")}
         >
           Remove
         </button>
